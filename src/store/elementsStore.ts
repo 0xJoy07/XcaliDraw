@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Element } from '../types/element';
+import { updateRbush } from '../canvas/hitTest';
 
 export type ToolType = 'select' | 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'line' | 'freedraw' | 'text' | 'image' | 'eraser' | 'hand' | 'laser';
 
@@ -9,6 +10,13 @@ export interface AppState {
   zoom: number;
   selectedElementIds: string[];
   activeTool: ToolType;
+  contextMenu: { x: number, y: number, type: 'canvas' | 'element' } | null;
+  currentItemStyle: {
+    strokeColor: string;
+    backgroundColor: string;
+    strokeWidth: number;
+    roughness: number;
+  };
 }
 
 interface ElementsStore {
@@ -19,6 +27,10 @@ interface ElementsStore {
   setAppState: (state: Partial<AppState>) => void;
   addElement: (element: Element) => void;
   updateElement: (id: string, updates: Partial<Element>) => void;
+  history: { past: Element[][], future: Element[][] };
+  addHistoryPoint: () => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 export const useElementsStore = create<ElementsStore>((set) => ({
@@ -29,13 +41,58 @@ export const useElementsStore = create<ElementsStore>((set) => ({
     zoom: 1,
     selectedElementIds: [],
     activeTool: 'select',
+    contextMenu: null,
+    currentItemStyle: {
+      strokeColor: '#000000',
+      backgroundColor: 'transparent',
+      strokeWidth: 1,
+      roughness: 1
+    }
   },
   dirty: true,
   setDirty: () => set({ dirty: true }),
   setAppState: (newState) => set((state) => ({ appState: { ...state.appState, ...newState }, dirty: true })),
-  addElement: (element) => set((state) => ({ elements: [...state.elements, element], dirty: true })),
-  updateElement: (id, updates) => set((state) => ({
-    elements: state.elements.map((el) => el.id === id ? { ...el, ...updates } : el),
-    dirty: true
-  }))
+  addElement: (element) => set((state) => {
+    const newElements = [...state.elements, element];
+    updateRbush(newElements);
+    return { elements: newElements, dirty: true };
+  }),
+  updateElement: (id, updates) => set((state) => {
+    const newElements = state.elements.map((el) => el.id === id ? { ...el, ...updates } : el);
+    updateRbush(newElements);
+    return { elements: newElements, dirty: true };
+  }),
+  history: { past: [], future: [] },
+  addHistoryPoint: () => set((state) => {
+    return {
+      history: {
+        past: [...state.history.past, state.elements],
+        future: []
+      }
+    };
+  }),
+  undo: () => set((state) => {
+    if (state.history.past.length === 0) return state;
+    const previous = state.history.past[state.history.past.length - 1];
+    const newPast = state.history.past.slice(0, -1);
+    updateRbush(previous);
+    return {
+      elements: previous,
+      history: { past: newPast, future: [state.elements, ...state.history.future] },
+      dirty: true,
+      appState: { ...state.appState, selectedElementIds: [] } // Clear selection on undo
+    };
+  }),
+  redo: () => set((state) => {
+    if (state.history.future.length === 0) return state;
+    const next = state.history.future[0];
+    const newFuture = state.history.future.slice(1);
+    updateRbush(next);
+    return {
+      elements: next,
+      history: { past: [...state.history.past, state.elements], future: newFuture },
+      dirty: true,
+      appState: { ...state.appState, selectedElementIds: [] } // Clear selection on redo
+    };
+  })
 }));

@@ -15,7 +15,9 @@ export interface Element {
   roughness: number;
   opacity: number;
   isDeleted: boolean;
+  // Specific to freedraw
   points?: { x: number, y: number }[];
+  // Specific to text
   text?: string;
   fontSize?: number;
   fontFamily?: string;

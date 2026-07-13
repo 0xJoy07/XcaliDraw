@@ -13,6 +13,7 @@
     "@tailwindcss/vite": "^4.3.2",
     "file-saver": "^2.0.5",
     "idb-keyval": "^6.3.0",
+    "lucide-react": "^1.24.0",
     "nanoid": "^6.0.0",
     "perfect-freehand": "^1.2.3",
     "rbush": "^4.0.1",
