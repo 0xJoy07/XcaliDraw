@@ -10,6 +10,7 @@ const STROKE_COLORS = [
   { value: '#f08c00', label: 'Orange' },
   { value: '#9c36b5', label: 'Purple' },
   { value: '#e8590c', label: 'Vermilion' },
+  { value: '#ffffff', label: 'White' },
 ];
 
 const BG_COLORS = [
@@ -21,6 +22,7 @@ const BG_COLORS = [
   { value: '#a5d8ff', label: 'Blue tint' },
   { value: '#e5dbff', label: 'Purple tint' },
   { value: '#1e1e1e', label: 'Dark' },
+  { value: '#ffffff', label: 'White' },
 ];
 
 // Mini SVG previews for stroke styles

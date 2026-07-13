@@ -33,8 +33,21 @@ interface ElementsStore {
   redo: () => void;
 }
 
+const loadElements = (): Element[] => {
+  try {
+    const data = localStorage.getItem('xcalidraw-elements');
+    if (data) return JSON.parse(data);
+  } catch (e) {
+    console.error('Failed to load elements', e);
+  }
+  return [];
+};
+
+const initialElements = loadElements();
+updateRbush(initialElements);
+
 export const useElementsStore = create<ElementsStore>((set) => ({
-  elements: [],
+  elements: initialElements,
   appState: {
     scrollX: 0,
     scrollY: 0,
@@ -96,3 +109,13 @@ export const useElementsStore = create<ElementsStore>((set) => ({
     };
   })
 }));
+
+useElementsStore.subscribe((state, prevState) => {
+  if (state.elements !== prevState.elements) {
+    try {
+      localStorage.setItem('xcalidraw-elements', JSON.stringify(state.elements));
+    } catch (e) {
+      console.error('Failed to save elements', e);
+    }
+  }
+});

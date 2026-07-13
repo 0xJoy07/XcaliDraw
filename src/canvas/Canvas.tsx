@@ -35,9 +35,11 @@ const TextEditorOverlay = ({
   React.useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
-    ta.focus();
-    // put caret at end
-    ta.setSelectionRange(ta.value.length, ta.value.length);
+    const timeout = setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }, 0);
+    return () => clearTimeout(timeout);
   }, []);
 
   // auto-resize to content
@@ -360,9 +362,6 @@ export const Canvas: React.FC = () => {
         const ctx = lc.getContext('2d');
         if (ctx) {
           ctx.clearRect(0, 0, lc.width, lc.height);
-          const now = performance.now();
-          laserPoints.current = laserPoints.current.filter(p => now - p.t < 900);
-
           if (laserPoints.current.length > 1) {
             const { appState } = useElementsStore.getState();
             ctx.save();
@@ -370,20 +369,26 @@ export const Canvas: React.FC = () => {
             ctx.scale(appState.zoom, appState.zoom);
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
-            ctx.lineWidth = 3 / appState.zoom;
 
+            ctx.beginPath();
+            ctx.moveTo(laserPoints.current[0].x, laserPoints.current[0].y);
             for (let i = 1; i < laserPoints.current.length; i++) {
-              const p1 = laserPoints.current[i - 1];
-              const p2 = laserPoints.current[i];
-              const opacity = Math.max(0, 1 - (now - p2.t) / 900);
-              ctx.beginPath();
-              ctx.moveTo(p1.x, p1.y);
-              ctx.lineTo(p2.x, p2.y);
-              ctx.strokeStyle = `rgba(255,50,50,${opacity})`;
-              ctx.shadowBlur = 8 / appState.zoom;
-              ctx.shadowColor = `rgba(255,80,80,${opacity * 0.7})`;
-              ctx.stroke();
+              ctx.lineTo(laserPoints.current[i].x, laserPoints.current[i].y);
             }
+            
+            // Outer glow
+            ctx.strokeStyle = 'rgba(255, 50, 50, 0.7)';
+            ctx.shadowBlur = 15 / appState.zoom;
+            ctx.shadowColor = 'rgba(255, 50, 50, 1)';
+            ctx.lineWidth = 6 / appState.zoom;
+            ctx.stroke();
+
+            // Inner core
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5 / appState.zoom;
+            ctx.stroke();
+
             ctx.restore();
           }
         }
@@ -449,6 +454,58 @@ export const Canvas: React.FC = () => {
     input.click();
   };
 
+  // ── Global Paste Listener for Images ─────────────────────────────────────────
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (!file) continue;
+          e.preventDefault();
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const src = ev.target?.result as string;
+            if (!src) return;
+            const img = new Image();
+            img.onload = () => {
+              imageCache[src] = img;
+              const state = useElementsStore.getState();
+              const { appState } = state;
+              const cx = (window.innerWidth / 2 - appState.scrollX) / appState.zoom;
+              const cy = (window.innerHeight / 2 - appState.scrollY) / appState.zoom;
+              const maxW = Math.min(600, window.innerWidth * 0.5);
+              const maxH = Math.min(400, window.innerHeight * 0.5);
+              const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+              const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+              const el: Element = {
+                id: nanoid(), type: 'image',
+                x: cx - w / 2, y: cy - h / 2,
+                width: w, height: h, angle: 0,
+                strokeColor: 'transparent', backgroundColor: 'transparent',
+                strokeWidth: 0, strokeStyle: 'solid', roughness: 0,
+                opacity: 1, isDeleted: false,
+                seed: Math.floor(Math.random() * 2 ** 31),
+                fileId: src,
+              };
+              state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+              state.addElement(el);
+              state.addHistoryPoint();
+            };
+            img.src = src;
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
   // ── Dynamic cursor from mouse position ───────────────────────────────────────
   const updateCursorForPosition = (clientX: number, clientY: number) => {
     const state = useElementsStore.getState();
@@ -506,7 +563,7 @@ export const Canvas: React.FC = () => {
 
     // ── Laser ──
     if (state.appState.activeTool === 'laser') {
-      laserPoints.current.push({ x, y, t: performance.now() });
+      laserPoints.current = [{ x, y, t: performance.now() }];
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
@@ -540,7 +597,7 @@ export const Canvas: React.FC = () => {
       const el: Element = {
         id: nanoid(), type: 'text',
         x, y, width: 200, height: 28, angle: 0,
-        strokeColor: state.appState.currentItemStyle.strokeColor,
+        strokeColor: state.appState.currentItemStyle.strokeColor === 'transparent' ? '#1e1e1e' : state.appState.currentItemStyle.strokeColor,
         backgroundColor: 'transparent',
         strokeWidth: 1, strokeStyle: 'solid',
         roughness: 0, opacity: 1, isDeleted: false,
@@ -731,6 +788,7 @@ export const Canvas: React.FC = () => {
       return;
     }
     if (state.appState.activeTool === 'laser') {
+      laserPoints.current = [];
       e.currentTarget.releasePointerCapture(e.pointerId);
       return;
     }
@@ -789,7 +847,7 @@ export const Canvas: React.FC = () => {
       const el: Element = {
         id: nanoid(), type: 'text',
         x, y, width: 200, height: 28, angle: 0,
-        strokeColor: state.appState.currentItemStyle.strokeColor,
+        strokeColor: state.appState.currentItemStyle.strokeColor === 'transparent' ? '#1e1e1e' : state.appState.currentItemStyle.strokeColor,
         backgroundColor: 'transparent',
         strokeWidth: 1, strokeStyle: 'solid',
         roughness: 0, opacity: 1, isDeleted: false,
