@@ -2,7 +2,7 @@ import type { Element } from '../types/element';
 import type { RoughCanvas } from 'roughjs/bin/canvas';
 
 // Cache for loaded images
-const imageCache: Record<string, HTMLImageElement> = {};
+export const imageCache: Record<string, HTMLImageElement> = {};
 
 export const renderElement = (rc: RoughCanvas, ctx: CanvasRenderingContext2D, element: Element) => {
   if (element.isDeleted) return;

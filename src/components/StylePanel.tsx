@@ -1,14 +1,84 @@
-import React from 'react';
 import { useElementsStore } from '../store/elementsStore';
 
-const COLORS = [
-  'transparent',
-  '#1e1e1e', // black/dark
-  '#e03131', // red
-  '#2f9e44', // green
-  '#1971c2', // blue
-  '#f08c00', // orange
+// Expanded, curated color palettes
+const STROKE_COLORS = [
+  { value: 'transparent', label: 'None' },
+  { value: '#1e1e1e', label: 'Black' },
+  { value: '#e03131', label: 'Red' },
+  { value: '#2f9e44', label: 'Green' },
+  { value: '#1971c2', label: 'Blue' },
+  { value: '#f08c00', label: 'Orange' },
+  { value: '#9c36b5', label: 'Purple' },
+  { value: '#e8590c', label: 'Vermilion' },
 ];
+
+const BG_COLORS = [
+  { value: 'transparent', label: 'None' },
+  { value: '#fff9db', label: 'Yellow tint' },
+  { value: '#ffd8a8', label: 'Peach tint' },
+  { value: '#ffc9c9', label: 'Red tint' },
+  { value: '#d3f9d8', label: 'Green tint' },
+  { value: '#a5d8ff', label: 'Blue tint' },
+  { value: '#e5dbff', label: 'Purple tint' },
+  { value: '#1e1e1e', label: 'Dark' },
+];
+
+// Mini SVG previews for stroke styles
+const StylePreview = ({ roughness }: { roughness: number }) => {
+  // Clean: straight line
+  // Hand: slightly wavy
+  // Rough: very wavy
+  if (roughness === 0) {
+    return (
+      <svg width="36" height="16" viewBox="0 0 36 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="4" y1="8" x2="32" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+  if (roughness === 1) {
+    return (
+      <svg width="36" height="16" viewBox="0 0 36 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 9 Q10 6 18 8 Q26 10 32 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+      </svg>
+    );
+  }
+  // roughness 2
+  return (
+    <svg width="36" height="16" viewBox="0 0 36 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 8 L9 5 L13 11 L18 5 L22 11 L27 5 L32 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  );
+};
+
+// Color swatch with transparent support
+const ColorSwatch = ({
+  color, selected, onClick, title,
+}: {
+  color: string; selected: boolean; onClick: () => void; title: string;
+}) => (
+  <button
+    title={title}
+    onClick={onClick}
+    className={`w-7 h-7 rounded-lg border-2 transition-all hover:scale-110 hover:shadow-md relative overflow-hidden ${
+      selected ? 'border-indigo-500 shadow-sm scale-105' : 'border-ui-border'
+    }`}
+    style={{ backgroundColor: color === 'transparent' ? undefined : color }}
+  >
+    {color === 'transparent' && (
+      <div className="absolute inset-0 bg-white dark:bg-gray-800">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'repeating-conic-gradient(#ccc 0% 25%, white 0% 50%) 0 0/8px 8px',
+          }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-[130%] h-0.5 bg-red-400 rotate-45" />
+        </div>
+      </div>
+    )}
+  </button>
+);
 
 export const StylePanel = () => {
   const elements = useElementsStore(state => state.elements);
@@ -17,8 +87,8 @@ export const StylePanel = () => {
   const setAppState = useElementsStore(state => state.setAppState);
   const addHistoryPoint = useElementsStore(state => state.addHistoryPoint);
 
-  const selectedElements = elements.filter(el => appState.selectedElementIds.includes(el.id));
-  
+  const selectedElements = elements.filter(el => appState.selectedElementIds.includes(el.id) && !el.isDeleted);
+
   const activeStyle = selectedElements.length > 0
     ? {
         strokeColor: selectedElements[0].strokeColor,
@@ -30,110 +100,102 @@ export const StylePanel = () => {
 
   const updateStyle = (key: string, value: string | number) => {
     if (selectedElements.length > 0) {
-      selectedElements.forEach(el => {
-        updateElement(el.id, { [key]: value });
-      });
+      selectedElements.forEach(el => updateElement(el.id, { [key]: value }));
       addHistoryPoint();
     } else {
-      setAppState({
-        currentItemStyle: {
-          ...appState.currentItemStyle,
-          [key]: value
-        }
-      });
+      setAppState({ currentItemStyle: { ...appState.currentItemStyle, [key]: value } });
     }
   };
 
   const isShapeTool = ['rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'text'].includes(appState.activeTool);
-  if (selectedElements.length === 0 && !isShapeTool) {
-    return null;
-  }
+  if (selectedElements.length === 0 && !isShapeTool) return null;
+
+  const STROKE_WIDTHS = [
+    { value: 1, label: 'S' },
+    { value: 2, label: 'M' },
+    { value: 4, label: 'L' },
+  ];
+
+  const ROUGHNESSES = [
+    { value: 0, label: 'Clean' },
+    { value: 1, label: 'Hand' },
+    { value: 2, label: 'Rough' },
+  ];
 
   return (
-    <div className="absolute left-4 top-20 bg-ui-bg border border-ui-border rounded-xl shadow-md p-4 w-64 z-10 text-sm flex flex-col gap-4">
-      
+    <div className="absolute left-4 top-20 bg-ui-bg border border-ui-border rounded-xl shadow-lg p-4 w-60 z-10 text-sm flex flex-col gap-4 select-none">
+
       {/* Stroke Color */}
       <div className="flex flex-col gap-2">
-        <span className="font-medium text-ui-fg-muted text-xs uppercase tracking-wider">Stroke</span>
-        <div className="flex gap-1 flex-wrap">
-          {COLORS.map(color => (
-            <button
-              key={`stroke-${color}`}
-              className={`w-6 h-6 rounded border transition-transform hover:scale-110 ${
-                activeStyle.strokeColor === color ? 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-ui-bg' : 'border-ui-border'
-              }`}
-              style={{ backgroundColor: color === 'transparent' ? '#fff' : color }}
-              title={color}
-              onClick={() => updateStyle('strokeColor', color)}
-            >
-              {color === 'transparent' && (
-                <div className="w-full h-full relative overflow-hidden rounded">
-                  <div className="absolute w-[141%] h-px bg-red-500 -rotate-45 top-1/2 left-[-20%]"></div>
-                </div>
-              )}
-            </button>
+        <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Stroke</span>
+        <div className="flex gap-1.5 flex-wrap">
+          {STROKE_COLORS.map(({ value, label }) => (
+            <ColorSwatch
+              key={`stroke-${value}`}
+              color={value}
+              selected={activeStyle.strokeColor === value}
+              onClick={() => updateStyle('strokeColor', value)}
+              title={label}
+            />
           ))}
         </div>
       </div>
 
       {/* Background Color */}
       <div className="flex flex-col gap-2">
-        <span className="font-medium text-ui-fg-muted text-xs uppercase tracking-wider">Background</span>
-        <div className="flex gap-1 flex-wrap">
-          {COLORS.map(color => (
-            <button
-              key={`bg-${color}`}
-              className={`w-6 h-6 rounded border transition-transform hover:scale-110 ${
-                activeStyle.backgroundColor === color ? 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-ui-bg' : 'border-ui-border'
-              }`}
-              style={{ backgroundColor: color === 'transparent' ? '#fff' : color }}
-              title={color}
-              onClick={() => updateStyle('backgroundColor', color)}
-            >
-              {color === 'transparent' && (
-                <div className="w-full h-full relative overflow-hidden rounded">
-                  <div className="absolute w-[141%] h-px bg-red-500 -rotate-45 top-1/2 left-[-20%]"></div>
-                </div>
-              )}
-            </button>
+        <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Background</span>
+        <div className="flex gap-1.5 flex-wrap">
+          {BG_COLORS.map(({ value, label }) => (
+            <ColorSwatch
+              key={`bg-${value}`}
+              color={value}
+              selected={activeStyle.backgroundColor === value}
+              onClick={() => updateStyle('backgroundColor', value)}
+              title={label}
+            />
           ))}
         </div>
       </div>
 
       {/* Stroke Width */}
       <div className="flex flex-col gap-2">
-        <span className="font-medium text-ui-fg-muted text-xs uppercase tracking-wider">Stroke Width</span>
-        <div className="flex gap-2 bg-ui-bg-hover p-1 rounded-lg">
-          {[1, 2, 4].map(width => (
+        <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Stroke Width</span>
+        <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
+          {STROKE_WIDTHS.map(({ value, label }) => (
             <button
-              key={`width-${width}`}
-              className={`flex-1 flex items-center justify-center py-2 rounded-md ${
-                activeStyle.strokeWidth === width ? 'bg-ui-bg shadow-sm text-indigo-500' : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
+              key={`width-${value}`}
+              title={`${label} (${value}px)`}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-1 rounded-md transition-all ${
+                activeStyle.strokeWidth === value
+                  ? 'bg-ui-bg shadow-sm text-indigo-500'
+                  : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
               }`}
-              onClick={() => updateStyle('strokeWidth', width)}
+              onClick={() => updateStyle('strokeWidth', value)}
             >
-              <div 
-                className="bg-current rounded-full" 
-                style={{ width: 16, height: width }} 
-              />
+              <div className="bg-current rounded-full" style={{ width: 16, height: value === 1 ? 1.5 : value === 2 ? 3 : 5 }} />
+              <span className="text-[9px] font-medium opacity-60">{label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Roughness */}
+      {/* Line Style (roughness) */}
       <div className="flex flex-col gap-2">
-        <span className="font-medium text-ui-fg-muted text-xs uppercase tracking-wider">Style</span>
-        <div className="flex gap-2 bg-ui-bg-hover p-1 rounded-lg">
-          {[0, 1, 2].map(roughness => (
+        <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Style</span>
+        <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
+          {ROUGHNESSES.map(({ value, label }) => (
             <button
-              key={`roughness-${roughness}`}
-              className={`flex-1 py-1 text-xs rounded-md ${
-                activeStyle.roughness === roughness ? 'bg-ui-bg shadow-sm text-indigo-500' : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
+              key={`roughness-${value}`}
+              title={label}
+              className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-md transition-all ${
+                activeStyle.roughness === value
+                  ? 'bg-ui-bg shadow-sm text-indigo-500'
+                  : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
               }`}
-              onClick={() => updateStyle('roughness', roughness)}
+              onClick={() => updateStyle('roughness', value)}
             >
-              {roughness === 0 ? 'Clean' : roughness === 1 ? 'Hand' : 'Rough'}
+              <StylePreview roughness={value} />
+              <span className="text-[9px] font-medium mt-0.5 opacity-70">{label}</span>
             </button>
           ))}
         </div>

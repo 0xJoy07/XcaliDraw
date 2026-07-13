@@ -4,12 +4,19 @@ import type { AppState } from '../store/elementsStore';
 import { nanoid } from 'nanoid';
 import type { Element, ElementType } from '../types/element';
 import rough from 'roughjs';
-import { renderElement, setDirtyCallback } from './renderElement';
+import { renderElement, setDirtyCallback, imageCache } from './renderElement';
 import { screenToWorld, worldToScreen } from '../lib/coords';
 import { hitTest, hitTestHandle } from './hitTest';
 
 // Register dirty callback so async image loads trigger re-renders
 setDirtyCallback(() => useElementsStore.getState().setDirty());
+
+// Cursor map for resize handles
+const HANDLE_CURSORS: Record<string, string> = {
+  nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize',
+  e: 'e-resize', se: 'se-resize', s: 's-resize',
+  sw: 'sw-resize', w: 'w-resize',
+};
 
 // ─── Text Editor Overlay ──────────────────────────────────────────────────────
 const TextEditorOverlay = ({
@@ -25,16 +32,22 @@ const TextEditorOverlay = ({
   const taRef = React.useRef<HTMLTextAreaElement>(null);
 
   // auto-focus on mount
-  React.useEffect(() => { taRef.current?.focus(); }, []);
-
-  // auto-resize
   React.useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = `${ta.scrollHeight}px`;
+    ta.focus();
+    // put caret at end
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }, []);
+
+  // auto-resize to content
+  React.useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
     ta.style.width = 'auto';
-    ta.style.width = `${Math.max(ta.scrollWidth, 120)}px`;
+    ta.style.height = 'auto';
+    ta.style.width = `${Math.max(ta.scrollWidth + 8, 120)}px`;
+    ta.style.height = `${Math.max(ta.scrollHeight + 4, 32)}px`;
   }, [draft]);
 
   const pos = worldToScreen(element.x, element.y, appState);
@@ -46,6 +59,7 @@ const TextEditorOverlay = ({
     <textarea
       ref={taRef}
       value={draft}
+      spellCheck={false}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onPointerDown={(e) => e.stopPropagation()}
@@ -55,14 +69,16 @@ const TextEditorOverlay = ({
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur(); }
       }}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         zIndex: 300,
         left: pos.x,
         top: pos.y,
         fontSize,
-        lineHeight: 1.25,
+        lineHeight: 1.3,
         fontFamily: element.fontFamily || 'sans-serif',
-        color: element.strokeColor === 'transparent' ? '#1e1e1e' : (element.strokeColor || '#1e1e1e'),
+        color: (element.strokeColor === 'transparent' || !element.strokeColor || element.strokeColor === '#000000') 
+          ? (document.documentElement.classList.contains('dark') ? '#fff' : '#1e1e1e')
+          : element.strokeColor,
         background: 'transparent',
         border: '1.5px dashed #6965db',
         borderRadius: 3,
@@ -71,9 +87,11 @@ const TextEditorOverlay = ({
         overflow: 'hidden',
         padding: '2px 4px',
         margin: 0,
-        minWidth: Math.max(120, 120 * appState.zoom),
-        minHeight: fontSize * 1.4,
+        minWidth: 120,
+        minHeight: fontSize * 1.5,
         boxShadow: '0 0 0 2px rgba(105,101,219,0.2)',
+        wordBreak: 'break-word',
+        whiteSpace: 'pre-wrap',
       }}
     />
   );
@@ -83,6 +101,7 @@ const TextEditorOverlay = ({
 export const Canvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const laserCanvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // interaction state
   const isPanning = useRef(false);
@@ -97,7 +116,28 @@ export const Canvas: React.FC = () => {
   const lastScreen = useRef({ x: 0, y: 0 });
 
   const isSpacePressed = useRef(false);
-  const [editingTextId, setEditingTextId] = React.useState<string | null>(null);
+
+  // text editing — use BOTH a ref and state
+  // ref: for synchronous logic inside pointer handlers
+  // state: for triggering React re-render of the overlay
+  const editingTextIdRef = useRef<string | null>(null);
+  const [editingTextId, setEditingTextIdState] = React.useState<string | null>(null);
+
+  const setEditingTextId = (id: string | null | ((prev: string | null) => string | null)) => {
+    if (typeof id === 'function') {
+      const next = id(editingTextIdRef.current);
+      editingTextIdRef.current = next;
+      setEditingTextIdState(next);
+    } else {
+      editingTextIdRef.current = id;
+      setEditingTextIdState(id);
+    }
+  };
+
+  // dynamic cursor state - direct DOM update for performance
+  const setCursor = (cursorStr: string) => {
+    if (canvasRef.current) canvasRef.current.style.cursor = cursorStr;
+  };
 
   // drag / resize refs
   const isDraggingElems = useRef(false);
@@ -147,7 +187,6 @@ export const Canvas: React.FC = () => {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          // clear
           ctx.fillStyle = currentBg.current;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -193,7 +232,7 @@ export const Canvas: React.FC = () => {
             }
           }
 
-          // marquee selection rect
+          // marquee
           if (isMarquee.current) {
             const cur = screenToWorld(lastScreen.current.x, lastScreen.current.y, state.appState);
             const w = cur.x - startWorld.current.x, h = cur.y - startWorld.current.y;
@@ -206,12 +245,12 @@ export const Canvas: React.FC = () => {
             ctx.setLineDash([]);
           }
 
-          // empty canvas hint
+          ctx.restore();
+
+          // empty canvas hint (in screen space)
           if (state.elements.filter(el => !el.isDeleted).length === 0) {
-            ctx.restore();
-            ctx.save();
-            ctx.fillStyle = 'rgba(150,150,150,0.6)';
-            ctx.font = '15px sans-serif';
+            ctx.fillStyle = 'rgba(140,140,140,0.6)';
+            ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(
               'Double-click or press T to add text · Right-click for more options',
@@ -219,8 +258,6 @@ export const Canvas: React.FC = () => {
               canvas.height / 2
             );
           }
-
-          ctx.restore();
         }
         useElementsStore.setState({ dirty: false });
       }
@@ -232,7 +269,7 @@ export const Canvas: React.FC = () => {
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // ── Resize observer ──────────────────────────────────────────────────────────
+  // ── Resize ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     const resize = () => {
       if (canvasRef.current) { canvasRef.current.width = window.innerWidth; canvasRef.current.height = window.innerHeight; useElementsStore.setState({ dirty: true }); }
@@ -243,7 +280,7 @@ export const Canvas: React.FC = () => {
     return () => window.removeEventListener('resize', resize);
   }, []);
 
-  // ── Wheel zoom / scroll ──────────────────────────────────────────────────────
+  // ── Wheel ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -263,23 +300,19 @@ export const Canvas: React.FC = () => {
     return () => canvas.removeEventListener('wheel', onWheel);
   }, []);
 
-  // ── Keyboard shortcuts ───────────────────────────────────────────────────────
+  // ── Keyboard ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      // Don't handle shortcuts when editing text
-      if (editingTextId) return;
+      if (editingTextIdRef.current) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
-      // Space → pan
       if (e.code === 'Space' && !isSpacePressed.current) {
         isSpacePressed.current = true;
-        if (canvasRef.current && useElementsStore.getState().appState.activeTool !== 'hand') {
-          canvasRef.current.style.cursor = 'grab';
-        }
+        if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
+        e.preventDefault();
       }
 
-      // Delete / Backspace → remove selected elements
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const state = useElementsStore.getState();
         if (state.appState.selectedElementIds.length > 0) {
@@ -289,17 +322,21 @@ export const Canvas: React.FC = () => {
         }
       }
 
-      // Ctrl+Z undo, Ctrl+Y redo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); useElementsStore.getState().undo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); useElementsStore.getState().undo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); useElementsStore.getState().redo(); }
-
-      // Escape → deselect
       if (e.key === 'Escape') useElementsStore.getState().setAppState({ selectedElementIds: [] });
 
-      // Tool shortcuts
-      const toolMap: Record<string, string> = { '1': 'select', '2': 'rectangle', '3': 'diamond', '4': 'ellipse', '5': 'arrow', '6': 'line', '7': 'freedraw', '8': 'text', '0': 'eraser', 'h': 'hand', 'v': 'select', 'r': 'rectangle', 'e': 'ellipse', 'a': 'arrow', 'l': 'laser', 'p': 'freedraw', 't': 'text' };
-      const mapped = toolMap[e.key.toLowerCase()];
-      if (mapped && !e.ctrlKey && !e.metaKey) useElementsStore.getState().setAppState({ activeTool: mapped as any });
+      // Tool shortcuts (no modifiers)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const toolMap: Record<string, string> = {
+          '1': 'select', '2': 'rectangle', '3': 'diamond', '4': 'ellipse',
+          '5': 'arrow', '6': 'line', '7': 'freedraw', '8': 'text', '0': 'eraser',
+          'h': 'hand', 'v': 'select', 'r': 'rectangle', 'e': 'ellipse',
+          'a': 'arrow', 'l': 'laser', 'p': 'freedraw', 't': 'text',
+        };
+        const mapped = toolMap[e.key.toLowerCase()];
+        if (mapped) useElementsStore.getState().setAppState({ activeTool: mapped as any });
+      }
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
@@ -312,12 +349,12 @@ export const Canvas: React.FC = () => {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); };
-  }, [editingTextId]);
+  }, []); // no editingTextId dep — use ref instead
 
-  // ── Laser rAF loop ───────────────────────────────────────────────────────────
+  // ── Laser rAF ────────────────────────────────────────────────────────────────
   useEffect(() => {
     let rafId: number;
-    const render = () => {
+    const renderLaser = () => {
       const lc = laserCanvasRef.current;
       if (lc) {
         const ctx = lc.getContext('2d');
@@ -343,76 +380,122 @@ export const Canvas: React.FC = () => {
               ctx.moveTo(p1.x, p1.y);
               ctx.lineTo(p2.x, p2.y);
               ctx.strokeStyle = `rgba(255,50,50,${opacity})`;
-              ctx.shadowBlur = 6 / appState.zoom;
-              ctx.shadowColor = `rgba(255,100,100,${opacity * 0.8})`;
+              ctx.shadowBlur = 8 / appState.zoom;
+              ctx.shadowColor = `rgba(255,80,80,${opacity * 0.7})`;
               ctx.stroke();
             }
             ctx.restore();
           }
         }
       }
-      rafId = requestAnimationFrame(render);
+      rafId = requestAnimationFrame(renderLaser);
     };
-    render();
+    renderLaser();
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // ── Image import ─────────────────────────────────────────────────────────────
-  const importImage = React.useCallback(() => {
+  // ── Image import (must be synchronous with user gesture) ─────────────────────
+  const importImage = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
     input.onchange = () => {
       const file = input.files?.[0];
+      document.body.removeChild(input);
       if (!file) return;
+
       const reader = new FileReader();
       reader.onload = (ev) => {
         const src = ev.target?.result as string;
+        if (!src) return;
         const img = new Image();
         img.onload = () => {
+          imageCache[src] = img;
           const state = useElementsStore.getState();
           const { appState } = state;
-          // Place image at center of viewport
           const cx = (window.innerWidth / 2 - appState.scrollX) / appState.zoom;
           const cy = (window.innerHeight / 2 - appState.scrollY) / appState.zoom;
-          const maxW = 400, maxH = 300;
-          const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-          const w = img.width * scale, h = img.height * scale;
+          const maxW = Math.min(600, window.innerWidth * 0.5);
+          const maxH = Math.min(400, window.innerHeight * 0.5);
+          const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+          const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
           const el: Element = {
             id: nanoid(), type: 'image',
             x: cx - w / 2, y: cy - h / 2,
-            width: w, height: h,
-            angle: 0,
+            width: w, height: h, angle: 0,
             strokeColor: 'transparent', backgroundColor: 'transparent',
             strokeWidth: 0, strokeStyle: 'solid', roughness: 0,
             opacity: 1, isDeleted: false,
             seed: Math.floor(Math.random() * 2 ** 31),
             fileId: src,
           };
+          state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
           state.addElement(el);
-          state.setAppState({ selectedElementIds: [el.id] });
           state.addHistoryPoint();
         };
         img.src = src;
       };
       reader.readAsDataURL(file);
     };
+
+    // Cancel cleans up the input
+    input.addEventListener('cancel', () => {
+      if (document.body.contains(input)) document.body.removeChild(input);
+    });
+
     input.click();
-  }, []);
+  };
+
+  // ── Dynamic cursor from mouse position ───────────────────────────────────────
+  const updateCursorForPosition = (clientX: number, clientY: number) => {
+    const state = useElementsStore.getState();
+    const { activeTool, selectedElementIds } = state.appState;
+
+    if (isSpacePressed.current) { setCursor('grab'); return; }
+    if (activeTool === 'hand') { setCursor('grab'); return; }
+    if (activeTool === 'laser') { setCursor('crosshair'); return; }
+    if (activeTool === 'eraser') { setCursor('cell'); return; }
+    if (['rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'text', 'freedraw', 'image'].includes(activeTool)) {
+      setCursor('crosshair'); return;
+    }
+
+    if (activeTool === 'select') {
+      const { x, y } = screenToWorld(clientX, clientY, state.appState);
+      const selectedEls = state.elements.filter(el => selectedElementIds.includes(el.id) && !el.isDeleted);
+
+      // Check handles first
+      const handleHit = hitTestHandle(x, y, selectedEls, state.appState.zoom);
+      if (handleHit) {
+        setCursor(HANDLE_CURSORS[handleHit.handle] || 'pointer');
+        return;
+      }
+
+      // Check if over any element
+      const hit = hitTest(x, y);
+      if (hit && !hit.isDeleted) {
+        setCursor('move');
+        return;
+      }
+
+      setCursor('default');
+    }
+  };
 
   // ── Pointer Down ─────────────────────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const state = useElementsStore.getState();
 
     if (state.appState.contextMenu) state.setAppState({ contextMenu: null });
-
-    // Right-click — handled by onContextMenu
     if (e.button === 2) return;
 
     const isMiddle = e.button === 1;
     if (state.appState.activeTool === 'hand' || isMiddle || isSpacePressed.current) {
       isPanning.current = true;
       lastScreen.current = { x: e.clientX, y: e.clientY };
+      setCursor('grabbing');
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
@@ -432,7 +515,6 @@ export const Canvas: React.FC = () => {
     if (state.appState.activeTool === 'eraser') {
       isErasing.current = true;
       e.currentTarget.setPointerCapture(e.pointerId);
-      // erase element under cursor immediately
       const hit = hitTest(x, y);
       if (hit) {
         state.addHistoryPoint();
@@ -450,17 +532,14 @@ export const Canvas: React.FC = () => {
 
     // ── Text ──
     if (state.appState.activeTool === 'text') {
-      // If clicked on an existing text element, edit it
       const hit = hitTest(x, y);
-      if (hit && hit.type === 'text') {
+      if (hit && hit.type === 'text' && !hit.isDeleted) {
         setEditingTextId(hit.id);
         return;
       }
-      // Otherwise create a new text element
       const el: Element = {
         id: nanoid(), type: 'text',
-        x, y, width: 200, height: 28,
-        angle: 0,
+        x, y, width: 200, height: 28, angle: 0,
         strokeColor: state.appState.currentItemStyle.strokeColor,
         backgroundColor: 'transparent',
         strokeWidth: 1, strokeStyle: 'solid',
@@ -469,8 +548,8 @@ export const Canvas: React.FC = () => {
         text: '', fontSize: 20, fontFamily: 'sans-serif',
       };
       state.addElement(el);
-      // Switch to select and begin editing — do NOT switch tool yet to avoid re-render race
-      state.setAppState({ activeTool: 'select', selectedElementIds: [el.id] });
+      state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+      // Set editing AFTER store update, using ref+state
       setEditingTextId(el.id);
       return;
     }
@@ -478,32 +557,33 @@ export const Canvas: React.FC = () => {
     // ── Select ──
     if (state.appState.activeTool === 'select') {
       const selectedEls = state.elements.filter(el => state.appState.selectedElementIds.includes(el.id) && !el.isDeleted);
-      // Handle check first
       const handleHit = hitTestHandle(x, y, selectedEls, state.appState.zoom);
       if (handleHit) {
         dragHandle.current = { elementId: handleHit.element.id, handle: handleHit.handle };
         origElems.current = Object.fromEntries(
           state.appState.selectedElementIds.map(id => {
-            const el = state.elements.find(el => el.id === id)!;
-            return [id, { ...el }];
-          })
+            const el = state.elements.find(el => el.id === id);
+            return el ? [id, { ...el }] : [id, null!];
+          }).filter(([, v]) => v)
         );
+        setCursor(HANDLE_CURSORS[handleHit.handle] || 'pointer');
         e.currentTarget.setPointerCapture(e.pointerId);
         return;
       }
-      // Element hit
       const hit = hitTest(x, y);
       if (hit && !hit.isDeleted) {
         if (!state.appState.selectedElementIds.includes(hit.id)) {
           state.setAppState({ selectedElementIds: [hit.id] });
         }
+        const allSelected = [...new Set([...state.appState.selectedElementIds, hit.id])];
         origElems.current = Object.fromEntries(
-          [...state.appState.selectedElementIds, hit.id].filter((v, i, a) => a.indexOf(v) === i).map(id => {
-            const el = state.elements.find(el => el.id === id)!;
-            return [id, { ...el }];
-          })
+          allSelected.map(id => {
+            const el = state.elements.find(el => el.id === id);
+            return el ? [id, { ...el }] : [id, null!];
+          }).filter(([, v]) => v)
         );
         isDraggingElems.current = true;
+        setCursor('move');
       } else {
         state.setAppState({ selectedElementIds: [] });
         isMarquee.current = true;
@@ -512,7 +592,7 @@ export const Canvas: React.FC = () => {
       return;
     }
 
-    // ── Drawing tools ──
+    // ── Shape drawing tools ──
     if (['rectangle', 'ellipse', 'diamond', 'arrow', 'line'].includes(state.appState.activeTool)) {
       isDrawing.current = true;
       const el: Element = {
@@ -521,13 +601,13 @@ export const Canvas: React.FC = () => {
         strokeColor: state.appState.currentItemStyle.strokeColor,
         backgroundColor: state.appState.currentItemStyle.backgroundColor,
         strokeWidth: state.appState.currentItemStyle.strokeWidth,
-        strokeStyle: 'solid',
-        roughness: state.appState.currentItemStyle.roughness,
+        strokeStyle: 'solid', roughness: state.appState.currentItemStyle.roughness,
         opacity: 1, isDeleted: false,
         seed: Math.floor(Math.random() * 2 ** 31),
       };
       drawingElementId.current = el.id;
       state.addElement(el);
+      setCursor('crosshair');
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
@@ -540,22 +620,22 @@ export const Canvas: React.FC = () => {
         x, y, width: 0, height: 0, angle: 0,
         strokeColor: state.appState.currentItemStyle.strokeColor,
         backgroundColor: 'transparent',
-        strokeWidth: state.appState.currentItemStyle.strokeWidth,
-        strokeStyle: 'solid',
-        roughness: 0, opacity: 1, isDeleted: false,
+        strokeWidth: Math.max(state.appState.currentItemStyle.strokeWidth, 2),
+        strokeStyle: 'solid', roughness: 0,
+        opacity: 1, isDeleted: false,
         seed: Math.floor(Math.random() * 2 ** 31),
         points: [{ x: 0, y: 0 }],
       };
       drawingElementId.current = el.id;
       state.addElement(el);
+      setCursor('crosshair');
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
   };
 
-  // ── Pointer Move ──────────────────────────────────────────────────────────────
+  // ── Pointer Move ─────────────────────────────────────────────────────────────
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    // ── Pan ──
     if (isPanning.current) {
       const dx = e.clientX - lastScreen.current.x;
       const dy = e.clientY - lastScreen.current.y;
@@ -568,13 +648,11 @@ export const Canvas: React.FC = () => {
     const state = useElementsStore.getState();
     const { x, y } = screenToWorld(e.clientX, e.clientY, state.appState);
 
-    // ── Laser ──
     if (state.appState.activeTool === 'laser' && e.buttons === 1) {
       laserPoints.current.push({ x, y, t: performance.now() });
       return;
     }
 
-    // ── Eraser ──
     if (isErasing.current && e.buttons === 1) {
       const hit = hitTest(x, y);
       if (hit) {
@@ -584,8 +662,7 @@ export const Canvas: React.FC = () => {
       return;
     }
 
-    // ── Handle resize ──
-    if (dragHandle.current) {
+    if (dragHandle.current && e.buttons === 1) {
       const orig = origElems.current[dragHandle.current.elementId];
       if (orig) {
         const { handle } = dragHandle.current;
@@ -593,18 +670,15 @@ export const Canvas: React.FC = () => {
         let mxX = Math.max(orig.x, orig.x + orig.width);
         let mnY = Math.min(orig.y, orig.y + orig.height);
         let mxY = Math.max(orig.y, orig.y + orig.height);
-
         if (handle.includes('w')) mnX = x;
         if (handle.includes('e')) mxX = x;
         if (handle.includes('n')) mnY = y;
         if (handle.includes('s')) mxY = y;
-
         state.updateElement(orig.id, { x: mnX, y: mnY, width: mxX - mnX, height: mxY - mnY });
       }
       return;
     }
 
-    // ── Move elements ──
     if (isDraggingElems.current && e.buttons === 1) {
       const dx = x - startWorld.current.x;
       const dy = y - startWorld.current.y;
@@ -615,13 +689,10 @@ export const Canvas: React.FC = () => {
       return;
     }
 
-    // ── Marquee ──
     if (isMarquee.current) {
       lastScreen.current = { x: e.clientX, y: e.clientY };
-      const mnX = Math.min(startWorld.current.x, x);
-      const mxX = Math.max(startWorld.current.x, x);
-      const mnY = Math.min(startWorld.current.y, y);
-      const mxY = Math.max(startWorld.current.y, y);
+      const mnX = Math.min(startWorld.current.x, x), mxX = Math.max(startWorld.current.x, x);
+      const mnY = Math.min(startWorld.current.y, y), mxY = Math.max(startWorld.current.y, y);
       const selected = state.elements.filter(el => {
         if (el.isDeleted) return false;
         const elMnX = Math.min(el.x, el.x + el.width), elMxX = Math.max(el.x, el.x + el.width);
@@ -632,18 +703,20 @@ export const Canvas: React.FC = () => {
       return;
     }
 
-    // ── Drawing shapes ──
     if (isDrawing.current && drawingElementId.current) {
       const el = state.elements.find(el => el.id === drawingElementId.current);
       if (!el) return;
-
       if (el.type === 'freedraw') {
         const pts = [...(el.points || []), { x: x - el.x, y: y - el.y }];
         state.updateElement(el.id, { points: pts });
       } else {
         state.updateElement(el.id, { width: x - startWorld.current.x, height: y - startWorld.current.y });
       }
+      return;
     }
+
+    // No drag active — update hover cursor
+    updateCursorForPosition(e.clientX, e.clientY);
   };
 
   // ── Pointer Up ───────────────────────────────────────────────────────────────
@@ -652,44 +725,42 @@ export const Canvas: React.FC = () => {
 
     if (isPanning.current) {
       isPanning.current = false;
+      setCursor('grab');
       e.currentTarget.releasePointerCapture(e.pointerId);
+      updateCursorForPosition(e.clientX, e.clientY);
       return;
     }
-
     if (state.appState.activeTool === 'laser') {
       e.currentTarget.releasePointerCapture(e.pointerId);
       return;
     }
-
     if (isErasing.current) {
       isErasing.current = false;
       e.currentTarget.releasePointerCapture(e.pointerId);
       return;
     }
-
     if (dragHandle.current) {
       dragHandle.current = null;
       origElems.current = {};
       state.addHistoryPoint();
       e.currentTarget.releasePointerCapture(e.pointerId);
+      updateCursorForPosition(e.clientX, e.clientY);
       return;
     }
-
     if (isDraggingElems.current) {
       isDraggingElems.current = false;
       origElems.current = {};
       state.addHistoryPoint();
       e.currentTarget.releasePointerCapture(e.pointerId);
+      updateCursorForPosition(e.clientX, e.clientY);
       return;
     }
-
     if (isMarquee.current) {
       isMarquee.current = false;
       state.setDirty();
       e.currentTarget.releasePointerCapture(e.pointerId);
       return;
     }
-
     if (isDrawing.current) {
       isDrawing.current = false;
       const el = state.elements.find(el => el.id === drawingElementId.current);
@@ -712,14 +783,12 @@ export const Canvas: React.FC = () => {
     const state = useElementsStore.getState();
     const { x, y } = screenToWorld(e.clientX, e.clientY, state.appState);
     const hit = hitTest(x, y);
-    if (hit && hit.type === 'text') {
+    if (hit && hit.type === 'text' && !hit.isDeleted) {
       setEditingTextId(hit.id);
     } else if (!hit) {
-      // double-click on empty canvas → create text
       const el: Element = {
         id: nanoid(), type: 'text',
-        x, y, width: 200, height: 28,
-        angle: 0,
+        x, y, width: 200, height: 28, angle: 0,
         strokeColor: state.appState.currentItemStyle.strokeColor,
         backgroundColor: 'transparent',
         strokeWidth: 1, strokeStyle: 'solid',
@@ -733,7 +802,7 @@ export const Canvas: React.FC = () => {
     }
   };
 
-  // ── Context Menu ──────────────────────────────────────────────────────────────
+  // ── Context Menu ─────────────────────────────────────────────────────────────
   const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     const state = useElementsStore.getState();
@@ -749,16 +818,9 @@ export const Canvas: React.FC = () => {
 
   const editingElement = useElementsStore(s => s.elements.find(el => el.id === editingTextId && !el.isDeleted));
   const appState = useElementsStore(s => s.appState);
-  const activeTool = appState.activeTool;
-
-  const cursor = activeTool === 'hand' ? 'grab'
-    : ['rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'text', 'freedraw'].includes(activeTool) ? 'crosshair'
-    : activeTool === 'eraser' ? 'cell'
-    : activeTool === 'laser' ? 'none'
-    : 'default';
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <canvas
         ref={canvasRef}
         onPointerDown={handlePointerDown}
@@ -767,7 +829,7 @@ export const Canvas: React.FC = () => {
         onPointerCancel={handlePointerUp}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
-        style={{ display: 'block', position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', cursor }}
+        style={{ display: 'block', position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none' }}
       />
       <canvas
         ref={laserCanvasRef}
@@ -783,10 +845,13 @@ export const Canvas: React.FC = () => {
             if (!val.trim()) {
               state.updateElement(editingElement.id, { isDeleted: true });
             } else {
-              state.updateElement(editingElement.id, { text: val.trim(), width: 200, height: 28 });
+              const lines = val.trim().split('\n');
+              const w = Math.max(...lines.map(l => l.length)) * (editingElement.fontSize || 20) * 0.6;
+              const h = lines.length * (editingElement.fontSize || 20) * 1.3;
+              state.updateElement(editingElement.id, { text: val.trim(), width: w, height: h });
               state.addHistoryPoint();
             }
-            setEditingTextId(null);
+            setEditingTextId((prev) => prev === editingElement.id ? null : prev);
           }}
         />
       )}
