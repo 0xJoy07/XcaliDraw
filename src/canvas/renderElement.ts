@@ -82,9 +82,15 @@ export const renderElement = (rc: RoughCanvas, ctx: CanvasRenderingContext2D, el
       ctx.font = `${fontSize}px ${element.fontFamily || 'sans-serif'}`;
       ctx.fillStyle = element.strokeColor || '#1e1e1e';
       ctx.textBaseline = 'top';
+      const textAlign = element.textAlign || 'left';
+      ctx.textAlign = textAlign as CanvasTextAlign;
       const lines = (element.text || '').split('\n');
+      
       lines.forEach((line, i) => {
-        ctx.fillText(line, element.x, element.y + i * fontSize * 1.25);
+        let x = element.x;
+        if (textAlign === 'center') x += element.width / 2;
+        if (textAlign === 'right') x += element.width;
+        ctx.fillText(line, x, element.y + i * fontSize * 1.25);
       });
       break;
     }

@@ -16,6 +16,9 @@ export interface AppState {
     backgroundColor: string;
     strokeWidth: number;
     roughness: number;
+    fontFamily: string;
+    fontSize: number;
+    textAlign: 'left' | 'center' | 'right';
   };
 }
 
@@ -59,7 +62,10 @@ export const useElementsStore = create<ElementsStore>((set) => ({
       strokeColor: '#000000',
       backgroundColor: 'transparent',
       strokeWidth: 1,
-      roughness: 1
+      roughness: 1,
+      fontFamily: 'sans-serif',
+      fontSize: 20,
+      textAlign: 'left'
     }
   },
   dirty: true,

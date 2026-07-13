@@ -91,12 +91,15 @@ export const StylePanel = () => {
 
   const selectedElements = elements.filter(el => appState.selectedElementIds.includes(el.id) && !el.isDeleted);
 
-  const activeStyle = selectedElements.length > 0
+  const activeStyle: any = selectedElements.length > 0
     ? {
         strokeColor: selectedElements[0].strokeColor,
         backgroundColor: selectedElements[0].backgroundColor,
         strokeWidth: selectedElements[0].strokeWidth,
         roughness: selectedElements[0].roughness,
+        fontFamily: selectedElements[0].fontFamily,
+        fontSize: selectedElements[0].fontSize,
+        textAlign: selectedElements[0].textAlign,
       }
     : appState.currentItemStyle;
 
@@ -112,6 +115,8 @@ export const StylePanel = () => {
   const isShapeTool = ['rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'text'].includes(appState.activeTool);
   if (selectedElements.length === 0 && !isShapeTool) return null;
 
+  const isText = appState.activeTool === 'text' || selectedElements.some(el => el.type === 'text');
+
   const STROKE_WIDTHS = [
     { value: 1, label: 'S' },
     { value: 2, label: 'M' },
@@ -122,6 +127,25 @@ export const StylePanel = () => {
     { value: 0, label: 'Clean' },
     { value: 1, label: 'Hand' },
     { value: 2, label: 'Rough' },
+  ];
+
+  const FONT_FAMILIES = [
+    { value: 'sans-serif', label: 'Sans' },
+    { value: 'serif', label: 'Serif' },
+    { value: 'monospace', label: 'Mono' },
+  ];
+
+  const FONT_SIZES = [
+    { value: 16, label: 'S' },
+    { value: 20, label: 'M' },
+    { value: 28, label: 'L' },
+    { value: 36, label: 'XL' },
+  ];
+
+  const TEXT_ALIGNS = [
+    { value: 'left', label: 'Left' },
+    { value: 'center', label: 'Center' },
+    { value: 'right', label: 'Right' },
   ];
 
   return (
@@ -182,26 +206,89 @@ export const StylePanel = () => {
       </div>
 
       {/* Line Style (roughness) */}
-      <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Style</span>
-        <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
-          {ROUGHNESSES.map(({ value, label }) => (
-            <button
-              key={`roughness-${value}`}
-              title={label}
-              className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-md transition-all ${
-                activeStyle.roughness === value
-                  ? 'bg-ui-bg shadow-sm text-indigo-500'
-                  : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
-              }`}
-              onClick={() => updateStyle('roughness', value)}
-            >
-              <StylePreview roughness={value} />
-              <span className="text-[9px] font-medium mt-0.5 opacity-70">{label}</span>
-            </button>
-          ))}
+      {!isText && (
+        <div className="flex flex-col gap-2">
+          <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Style</span>
+          <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
+            {ROUGHNESSES.map(({ value, label }) => (
+              <button
+                key={`roughness-${value}`}
+                title={label}
+                className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-md transition-all ${
+                  activeStyle.roughness === value
+                    ? 'bg-ui-bg shadow-sm text-indigo-500'
+                    : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
+                }`}
+                onClick={() => updateStyle('roughness', value)}
+              >
+                <StylePreview roughness={value} />
+                <span className="text-[9px] font-medium mt-0.5 opacity-70">{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Text Options */}
+      {isText && (
+        <>
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Font Family</span>
+            <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
+              {FONT_FAMILIES.map(({ value, label }) => (
+                <button
+                  key={`font-${value}`}
+                  className={`flex-1 py-1 text-xs rounded-md transition-all ${
+                    activeStyle.fontFamily === value
+                      ? 'bg-ui-bg shadow-sm text-indigo-500'
+                      : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
+                  style={{ fontFamily: value }}
+                  onClick={() => updateStyle('fontFamily', value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Font Size</span>
+            <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
+              {FONT_SIZES.map(({ value, label }) => (
+                <button
+                  key={`size-${value}`}
+                  className={`flex-1 py-1 text-xs font-medium rounded-md transition-all ${
+                    activeStyle.fontSize === value
+                      ? 'bg-ui-bg shadow-sm text-indigo-500'
+                      : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
+                  onClick={() => updateStyle('fontSize', value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Alignment</span>
+            <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
+              {TEXT_ALIGNS.map(({ value, label }) => (
+                <button
+                  key={`align-${value}`}
+                  className={`flex-1 py-1 text-xs rounded-md transition-all ${
+                    activeStyle.textAlign === value
+                      ? 'bg-ui-bg shadow-sm text-indigo-500'
+                      : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
+                  onClick={() => updateStyle('textAlign', value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   );

@@ -76,24 +76,22 @@ const TextEditorOverlay = ({
         left: pos.x,
         top: pos.y,
         fontSize,
-        lineHeight: 1.3,
+        lineHeight: 1.25,
         fontFamily: element.fontFamily || 'sans-serif',
+        textAlign: element.textAlign || 'left',
         color: (element.strokeColor === 'transparent' || !element.strokeColor || element.strokeColor === '#000000') 
           ? (document.documentElement.classList.contains('dark') ? '#fff' : '#1e1e1e')
           : element.strokeColor,
         background: 'transparent',
-        border: '1.5px dashed #6965db',
-        borderRadius: 3,
+        border: 'none',
         outline: 'none',
         resize: 'none',
         overflow: 'hidden',
-        padding: '2px 4px',
+        padding: 0,
         margin: 0,
-        minWidth: 120,
-        minHeight: fontSize * 1.5,
-        boxShadow: '0 0 0 2px rgba(105,101,219,0.2)',
-        wordBreak: 'break-word',
-        whiteSpace: 'pre-wrap',
+        minWidth: 10,
+        minHeight: fontSize * 1.25,
+        whiteSpace: 'pre',
       }}
     />
   );
@@ -602,7 +600,10 @@ export const Canvas: React.FC = () => {
         strokeWidth: 1, strokeStyle: 'solid',
         roughness: 0, opacity: 1, isDeleted: false,
         seed: Math.floor(Math.random() * 2 ** 31),
-        text: '', fontSize: 20, fontFamily: 'sans-serif',
+        text: '', 
+        fontSize: state.appState.currentItemStyle.fontSize, 
+        fontFamily: state.appState.currentItemStyle.fontFamily,
+        textAlign: state.appState.currentItemStyle.textAlign,
       };
       state.addElement(el);
       state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
@@ -852,7 +853,10 @@ export const Canvas: React.FC = () => {
         strokeWidth: 1, strokeStyle: 'solid',
         roughness: 0, opacity: 1, isDeleted: false,
         seed: Math.floor(Math.random() * 2 ** 31),
-        text: '', fontSize: 20, fontFamily: 'sans-serif',
+        text: '', 
+        fontSize: state.appState.currentItemStyle.fontSize, 
+        fontFamily: state.appState.currentItemStyle.fontFamily,
+        textAlign: state.appState.currentItemStyle.textAlign,
       };
       state.addElement(el);
       state.setAppState({ activeTool: 'select', selectedElementIds: [el.id] });
@@ -903,10 +907,24 @@ export const Canvas: React.FC = () => {
             if (!val.trim()) {
               state.updateElement(editingElement.id, { isDeleted: true });
             } else {
-              const lines = val.trim().split('\n');
-              const w = Math.max(...lines.map(l => l.length)) * (editingElement.fontSize || 20) * 0.6;
-              const h = lines.length * (editingElement.fontSize || 20) * 1.3;
-              state.updateElement(editingElement.id, { text: val.trim(), width: w, height: h });
+              const text = val.trim();
+              const lines = text.split('\n');
+              const fontSize = editingElement.fontSize || 20;
+              const fontFamily = editingElement.fontFamily || 'sans-serif';
+              
+              const ctx = canvasRef.current!.getContext('2d')!;
+              ctx.font = `${fontSize}px ${fontFamily}`;
+              
+              let maxWidth = 0;
+              for (const line of lines) {
+                const w = ctx.measureText(line).width;
+                if (w > maxWidth) maxWidth = w;
+              }
+              
+              const w = maxWidth;
+              const h = lines.length * fontSize * 1.25;
+              
+              state.updateElement(editingElement.id, { text, width: w, height: h });
               state.addHistoryPoint();
             }
             setEditingTextId((prev) => prev === editingElement.id ? null : prev);
