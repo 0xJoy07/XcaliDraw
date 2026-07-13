@@ -78,6 +78,7 @@ const TextEditorOverlay = ({
         fontSize,
         lineHeight: 1.25,
         fontFamily: element.fontFamily || 'sans-serif',
+        fontWeight: element.strokeWidth === 4 ? 800 : element.strokeWidth === 2 ? 600 : 400,
         textAlign: element.textAlign || 'left',
         color: (element.strokeColor === 'transparent' || !element.strokeColor || element.strokeColor === '#000000') 
           ? (document.documentElement.classList.contains('dark') ? '#fff' : '#1e1e1e')
@@ -251,10 +252,10 @@ export const Canvas: React.FC = () => {
           // empty canvas hint (in screen space)
           if (state.elements.filter(el => !el.isDeleted).length === 0) {
             ctx.fillStyle = 'rgba(140,140,140,0.6)';
-            ctx.font = '14px sans-serif';
+            ctx.font = '25px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(
-              'Double-click or press T to add text · Right-click for more options',
+              'Welcome to Xcalidraw. Feels like familiar. But a newer one .',
               canvas.width / 2,
               canvas.height / 2
             );
@@ -928,9 +929,10 @@ export const Canvas: React.FC = () => {
               const lines = text.split('\n');
               const fontSize = editingElement.fontSize || 20;
               const fontFamily = editingElement.fontFamily || 'sans-serif';
+              const fontWeight = editingElement.strokeWidth === 4 ? 800 : editingElement.strokeWidth === 2 ? 500 : 300;
               
               const ctx = canvasRef.current!.getContext('2d')!;
-              ctx.font = `${fontSize}px ${fontFamily}`;
+              ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
               
               let maxWidth = 0;
               for (const line of lines) {
