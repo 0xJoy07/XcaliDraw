@@ -8,7 +8,7 @@ import { StylePanel } from './components/StylePanel';
 import { 
   Lock, Hand, MousePointer2, Square, Diamond, Circle, 
   MoveRight, Minus, Pen, Type, Image as ImageIcon, Eraser,
-  Library, Moon, Sun, Menu, Share2
+  Library, Moon, Sun, Menu, Share2, Zap
 } from 'lucide-react';
 
 function App() {
@@ -97,6 +97,7 @@ function App() {
         <ToolButton tool="text" icon={Type} label="Text" shortcut="8" />
         <ToolButton tool="image" icon={ImageIcon} label="Image" shortcut="9" />
         <ToolButton tool="eraser" icon={Eraser} label="Eraser" shortcut="0" />
+        <ToolButton tool="laser" icon={Zap} label="Laser Pointer" shortcut="l" />
         <div className="w-px h-6 bg-ui-border mx-1 transition-colors"></div>
         <ToolButton icon={Library} label="Library" />
       </div>
