@@ -145,7 +145,8 @@ export const Canvas: React.FC = () => {
   const origElems = useRef<Record<string, Element>>({});
 
   // laser
-  const laserPoints = useRef<{ x: number; y: number; t: number }[]>([]);
+  const laserPoints = useRef<{ x: number; y: number }[]>([]);
+  const laserEndTime = useRef<number | null>(null);
 
   // canvas bg lerp
   const currentBg = useRef('#f8f9fa');
@@ -361,8 +362,23 @@ export const Canvas: React.FC = () => {
         if (ctx) {
           ctx.clearRect(0, 0, lc.width, lc.height);
           if (laserPoints.current.length > 1) {
+            const now = performance.now();
+            let globalAlpha = 1;
+            
+            if (laserEndTime.current !== null) {
+              const elapsed = now - laserEndTime.current;
+              if (elapsed > 400) {
+                laserPoints.current = [];
+                laserEndTime.current = null;
+                rafId = requestAnimationFrame(renderLaser);
+                return;
+              }
+              globalAlpha = 1 - (elapsed / 400);
+            }
+
             const { appState } = useElementsStore.getState();
             ctx.save();
+            ctx.globalAlpha = globalAlpha;
             ctx.translate(appState.scrollX, appState.scrollY);
             ctx.scale(appState.zoom, appState.zoom);
             ctx.lineJoin = 'round';
@@ -561,7 +577,8 @@ export const Canvas: React.FC = () => {
 
     // ── Laser ──
     if (state.appState.activeTool === 'laser') {
-      laserPoints.current = [{ x, y, t: performance.now() }];
+      laserPoints.current = [{ x, y }];
+      laserEndTime.current = null;
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
@@ -707,7 +724,7 @@ export const Canvas: React.FC = () => {
     const { x, y } = screenToWorld(e.clientX, e.clientY, state.appState);
 
     if (state.appState.activeTool === 'laser' && e.buttons === 1) {
-      laserPoints.current.push({ x, y, t: performance.now() });
+      laserPoints.current.push({ x, y });
       return;
     }
 
@@ -789,7 +806,7 @@ export const Canvas: React.FC = () => {
       return;
     }
     if (state.appState.activeTool === 'laser') {
-      laserPoints.current = [];
+      laserEndTime.current = performance.now();
       e.currentTarget.releasePointerCapture(e.pointerId);
       return;
     }
