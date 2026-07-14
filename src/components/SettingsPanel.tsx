@@ -109,10 +109,8 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
              return;
           }
         } catch (err) {
-          // not JSON array, treat as text file
+          // fallback to text import if parsing as Xcalidraw JSON fails
         }
-        
-        // Treat as text file
         const state = useElementsStore.getState();
         const { appState } = state;
         const cx = (window.innerWidth / 2 - appState.scrollX) / appState.zoom;

@@ -25,8 +25,7 @@ export const DebuggingTips = () => (
       code={`
 // Temporary debug visualization inside render()
 ctx.strokeStyle = 'red';
-state.elements.forEach(el => {
-  // calculate minX/minY/maxX/maxY exactly as hitTest.ts does
+state.elements.forEach(el => { // debug bounds must exactly match hitTest.ts logic to be useful
   ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
 });
 `}

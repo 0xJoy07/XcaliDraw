@@ -25,15 +25,12 @@ export const Selection = () => (
       language="typescript"
       code={`
 if (isMarquee.current) {
-  // End of drag
   isMarquee.current = false;
   
   const minX = Math.min(startWorld.current.x, x);
   const minY = Math.min(startWorld.current.y, y);
   const maxX = Math.max(startWorld.current.x, x);
   const maxY = Math.max(startWorld.current.y, y);
-
-  // Use hit-testing utility to find all elements in rect
   const hitElements = getElementsInRect(minX, minY, maxX, maxY);
   
   state.setAppState({ 

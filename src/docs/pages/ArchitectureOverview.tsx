@@ -23,16 +23,12 @@ export const ArchitectureOverview = () => (
       title="src/canvas/Canvas.tsx"
       language="tsx"
       code={`
-// The core hybrid setup
 export const Canvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  // Custom RAF loop outside of React's render cycle
   useEffect(() => {
     const render = () => {
       const state = useElementsStore.getState();
       if (state.dirty) {
-        // Redraw canvas using roughjs
         state.setDirty(false); // clear dirty flag
       }
       rafId = requestAnimationFrame(render);

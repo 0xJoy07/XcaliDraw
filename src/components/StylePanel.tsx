@@ -1,6 +1,4 @@
 import { useElementsStore } from '../store/elementsStore';
-
-// Expanded, curated color palettes
 const STROKE_COLORS = [
   { value: 'transparent', label: 'None' },
   { value: '#1e1e1e', label: 'Black' },
@@ -24,12 +22,7 @@ const BG_COLORS = [
   { value: '#1e1e1e80', label: 'Dark' },
   { value: '#ffffff80', label: 'White' },
 ];
-
-// Mini SVG previews for stroke styles
 const StylePreview = ({ roughness }: { roughness: number }) => {
-  // Clean: straight line
-  // Hand: slightly wavy
-  // Rough: very wavy
   if (roughness === 0) {
     return (
       <svg width="36" height="16" viewBox="0 0 36 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -44,15 +37,12 @@ const StylePreview = ({ roughness }: { roughness: number }) => {
       </svg>
     );
   }
-  // roughness 2
   return (
     <svg width="36" height="16" viewBox="0 0 36 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M4 8 L9 5 L13 11 L18 5 L22 11 L27 5 L32 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
   );
 };
-
-// Color swatch with transparent support
 const ColorSwatch = ({
   color, selected, onClick, title,
 }: {

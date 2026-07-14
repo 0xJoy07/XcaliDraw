@@ -1,7 +1,5 @@
 import type { Element } from '../types/element';
 import type { RoughCanvas } from 'roughjs/bin/canvas';
-
-// Cache for loaded images
 export const imageCache: Record<string, HTMLImageElement> = {};
 
 const getThemeAwareColor = (color: string | undefined) => {
@@ -30,7 +28,7 @@ export const renderElement = (rc: RoughCanvas, ctx: CanvasRenderingContext2D, el
   ctx.save();
   ctx.globalAlpha = element.opacity ?? 1;
 
-  // Apply rotation around element center
+  // roughjs requires unrotated rendering, so we rotate the entire context instead
   if (element.angle) {
     const cx = element.x + element.width / 2;
     const cy = element.y + element.height / 2;

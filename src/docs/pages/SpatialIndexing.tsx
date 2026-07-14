@@ -30,20 +30,16 @@ const tree = new RBush<any>();
 export const updateRbush = (elements: Element[]) => {
   tree.clear();
   const items = elements.map((el) => {
-    // ... calculate element bounds ...
     return { minX, minY, maxX, maxY, element: el };
   });
   tree.load(items);
 };
 
 export const hitTest = (x: number, y: number) => {
-  // Query a small 10x10 area around the pointer for fuzziness
   const results = tree.search({
     minX: x - 5, minY: y - 5,
     maxX: x + 5, maxY: y + 5
   });
-  
-  // Sort by z-index (array order) to pick topmost element
   return results.pop()?.element || null;
 };
 `}

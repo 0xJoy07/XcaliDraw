@@ -21,12 +21,10 @@ export const TextEditing = () => (
       title="src/canvas/Canvas.tsx (TextEditorOverlay)"
       language="tsx"
       code={`
-// Renders inside the Canvas component wrapper
 {editingTextId && (
   <TextEditorOverlay
     elementId={editingTextId}
     onCommit={(val, width, height) => {
-      // Commit the final string back to the Zustand store
       if (!val.trim()) {
         state.updateElement(editingElement.id, { isDeleted: true });
       } else {

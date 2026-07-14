@@ -30,8 +30,6 @@ const TextEditorOverlay = ({
 }) => {
   const [draft, setDraft] = React.useState(element.text || '');
   const taRef = React.useRef<HTMLTextAreaElement>(null);
-
-  // auto-focus on mount
   React.useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
@@ -41,8 +39,6 @@ const TextEditorOverlay = ({
     }, 0);
     return () => clearTimeout(timeout);
   }, []);
-
-  // auto-resize to content
   React.useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
@@ -176,8 +172,6 @@ export const Canvas: React.FC = () => {
 
     const render = () => {
       const state = useElementsStore.getState();
-
-      // theme lerp
       const newTarget = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#f8f9fa';
       if (newTarget !== targetBg.current) {
         targetBg.current = newTarget;
@@ -221,12 +215,8 @@ export const Canvas: React.FC = () => {
           ctx.save();
           ctx.translate(state.appState.scrollX, state.appState.scrollY);
           ctx.scale(state.appState.zoom, state.appState.zoom);
-
-          // render all elements
           const rc = rough.canvas(canvas);
           state.elements.forEach(el => renderElement(rc, ctx, el));
-
-          // selection box + handles
           if (state.appState.selectedElementIds.length > 0) {
             const sel = state.elements.filter(el => state.appState.selectedElementIds.includes(el.id) && !el.isDeleted);
             if (sel.length > 0) {
@@ -274,8 +264,6 @@ export const Canvas: React.FC = () => {
           }
 
           ctx.restore();
-
-          // empty canvas hint (in screen space)
           if (state.elements.filter(el => !el.isDeleted).length === 0) {
             ctx.fillStyle = 'rgba(140,140,140,0.6)';
             ctx.font = '25px sans-serif';
@@ -427,15 +415,11 @@ export const Canvas: React.FC = () => {
               for (let i = 1; i < line.points.length; i++) {
                 ctx.lineTo(line.points[i].x, line.points[i].y);
               }
-              
-              // Outer glow
               ctx.strokeStyle = 'rgba(255, 50, 50, 0.7)';
               ctx.shadowBlur = 15 / appState.zoom;
               ctx.shadowColor = 'rgba(255, 50, 50, 1)';
               ctx.lineWidth = 6 / appState.zoom;
               ctx.stroke();
-
-              // Inner core
               ctx.shadowBlur = 0;
               ctx.strokeStyle = '#ffffff';
               ctx.lineWidth = 2.5 / appState.zoom;
@@ -585,14 +569,12 @@ export const Canvas: React.FC = () => {
       const { x, y } = screenToWorld(clientX, clientY, state.appState);
       const selectedEls = state.elements.filter(el => selectedElementIds.includes(el.id) && !el.isDeleted);
 
-      // Check handles first
+      // hit-test handles before main elements to prioritize resize over move
       const handleHit = hitTestHandle(x, y, selectedEls, state.appState.zoom);
       if (handleHit) {
         setCursor(HANDLE_CURSORS[handleHit.handle] || 'pointer');
         return;
       }
-
-      // Check if over any element
       const hit = hitTest(x, y);
       if (hit && !hit.isDeleted) {
         setCursor('move');
@@ -685,8 +667,7 @@ export const Canvas: React.FC = () => {
         state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
       } else {
         state.setAppState({ selectedElementIds: [el.id] });
-      }
-      // Set editing AFTER store update, using ref+state
+      } // defer editing state to ensure DOM syncs before focus
       setEditingTextId(el.id);
       return;
     }

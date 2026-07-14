@@ -21,28 +21,19 @@ export const LaserTool = () => (
       title="src/canvas/Canvas.tsx"
       language="typescript"
       code={`
-// Stored as a mutable ref
 const laserLines = useRef<{ 
   points: { x: number; y: number }[]; 
   endTime: number | null 
 }[]>([]);
-
-// Custom RAF exclusively for fading out the laser
 const renderLaser = () => {
   const lc = laserCanvasRef.current;
   const ctx = lc.getContext('2d');
-  
-  // Clean up expired lines
   laserLines.current = laserLines.current.filter(line => {
     if (line.endTime === null) return true; // Still drawing
     return (now - line.endTime) < 1000;     // Keep if < 1s old
   });
-  
-  // Calculate opacity based on time elapsed
   const globalAlpha = 1 - (elapsed / 1000);
   ctx.globalAlpha = globalAlpha;
-  
-  // Draw glow & inner core...
 };
 `}
     />

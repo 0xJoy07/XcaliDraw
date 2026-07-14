@@ -34,7 +34,6 @@ export const useElementsStore = create<ElementsStore>((set) => ({
     updateRbush(newElements);
     return { elements: newElements, dirty: true };
   }),
-  // ... updateElement, undo, redo ...
 }));
 `}
     />

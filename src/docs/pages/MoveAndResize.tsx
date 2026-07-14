@@ -26,11 +26,8 @@ export const MoveAndResize = () => (
       language="typescript"
       code={`
 if (isDraggingElems.current && e.buttons === 1) {
-  // Calculate drag delta
   const dx = x - startWorld.current.x;
   const dy = y - startWorld.current.y;
-  
-  // Apply delta relative to original positions snapshot
   state.appState.selectedElementIds.forEach(id => {
     const orig = origElems.current[id];
     if (orig) {

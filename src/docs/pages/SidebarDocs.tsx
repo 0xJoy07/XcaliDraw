@@ -21,20 +21,16 @@ export const SidebarDocs = () => (
       title="src/components/StylePanel.tsx"
       language="tsx"
       code={`
-// The panel subscribes to the Zustand store directly
 const { appState, selectedElements } = useElementsStore((state) => ({
   appState: state.appState,
   selectedElements: state.elements.filter(el => 
     state.appState.selectedElementIds.includes(el.id)
   )
 }));
-
-// Changing a style loops through selected elements and mutates them
 const updateStyle = (key: string, value: any) => {
   if (selectedElements.length > 0) {
     selectedElements.forEach(el => updateElement(el.id, { [key]: value }));
   } else {
-    // Or updates the default style if nothing is selected
     setAppState({ currentItemStyle: { ...appState.currentItemStyle, [key]: value }});
   }
 };

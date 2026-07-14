@@ -23,15 +23,12 @@ export const CoordinateSystems = () => (
       title="src/canvas/math.ts"
       language="typescript"
       code={`
-// Convert screen coordinates to world coordinates
 export const screenToWorld = (clientX: number, clientY: number, appState: AppState) => {
   return {
     x: (clientX - appState.scrollX) / appState.zoom,
     y: (clientY - appState.scrollY) / appState.zoom
   };
 };
-
-// Convert world coordinates back to screen
 export const worldToScreen = (worldX: number, worldY: number, appState: AppState) => {
   return {
     x: worldX * appState.zoom + appState.scrollX,
