@@ -186,6 +186,36 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
     }
     setDirty();
   };
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyO') {
+        e.preventDefault();
+        handleOpen();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
+        e.preventDefault();
+        handleSave();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyE') {
+        e.preventDefault();
+        handleExportImage();
+      }
+      if (e.altKey && e.shiftKey && e.code === 'KeyR') {
+        e.preventDefault();
+        handleReset();
+      }
+      if (e.altKey && e.shiftKey && e.code === 'KeyD') {
+        e.preventDefault();
+        const currentTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+        setTheme(currentTheme);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, []);
 
   return (
     <>
@@ -205,7 +235,10 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
             useElementsStore.getState().setAppState({ isFindOpen: true });
             onClose();
           }} />
-          <SectionItem icon={HelpCircle} label="Help" onClick={() => alert("Shortcuts:\\n1-9: Tools\\nH: Hand\\nV: Select\\nSpace: Pan")} />
+          <SectionItem icon={HelpCircle} label="Help" onClick={() => {
+            useElementsStore.getState().setAppState({ isHelpOpen: true });
+            onClose();
+          }} />
           <div className="h-px w-full bg-ui-border my-2"></div>
           <SectionItem icon={RotateCcw} label="Reset the canvas" onClick={handleReset} />
         </div>

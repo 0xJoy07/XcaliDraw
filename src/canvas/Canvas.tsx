@@ -354,12 +354,12 @@ export const Canvas: React.FC = () => {
       // Tool shortcuts (no modifiers)
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const toolMap: Record<string, string> = {
-          '1': 'select', '2': 'rectangle', '3': 'diamond', '4': 'ellipse',
-          '5': 'arrow', '6': 'line', '7': 'freedraw', '8': 'text', '0': 'eraser',
-          'h': 'hand', 'v': 'select', 'r': 'rectangle', 'e': 'ellipse',
-          'a': 'arrow', 'l': 'laser', 'p': 'freedraw', 't': 'text',
+          'Digit1': 'select', 'Digit2': 'rectangle', 'Digit3': 'diamond', 'Digit4': 'ellipse',
+          'Digit5': 'arrow', 'Digit6': 'line', 'Digit7': 'freedraw', 'Digit8': 'text', 'Digit9': 'image', 'Digit0': 'eraser',
+          'KeyH': 'hand', 'KeyV': 'select', 'KeyR': 'rectangle', 'KeyE': 'ellipse',
+          'KeyA': 'arrow', 'KeyL': 'laser', 'KeyP': 'freedraw', 'KeyT': 'text',
         };
-        const mapped = toolMap[e.key.toLowerCase()];
+        const mapped = toolMap[e.code];
         if (mapped) useElementsStore.getState().setAppState({ activeTool: mapped as any });
       }
     };
@@ -807,7 +807,21 @@ export const Canvas: React.FC = () => {
       if (!el) return;
       if (el.type === 'freedraw') {
         const pts = [...(el.points || []), { x: x - el.x, y: y - el.y }];
-        state.updateElement(el.id, { points: pts });
+        let minX = 0, minY = 0, maxX = 0, maxY = 0;
+        pts.forEach(p => {
+          if (p.x < minX) minX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y > maxY) maxY = p.y;
+        });
+        const shiftedPts = pts.map(p => ({ x: p.x - minX, y: p.y - minY }));
+        state.updateElement(el.id, { 
+          x: el.x + minX, 
+          y: el.y + minY, 
+          width: maxX - minX, 
+          height: maxY - minY, 
+          points: shiftedPts 
+        });
       } else {
         state.updateElement(el.id, { width: x - startWorld.current.x, height: y - startWorld.current.y });
       }

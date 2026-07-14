@@ -6,6 +6,7 @@ import { ZoomIndicator } from './components/ZoomIndicator';
 import { ContextMenu } from './components/ContextMenu';
 import { StylePanel } from './components/StylePanel';
 import { FindDialog } from './components/FindDialog';
+import { HelpDialog } from './components/HelpDialog';
 import { 
   Lock, Hand, MousePointer2, Square, Diamond, Circle, 
   MoveRight, Minus, Pen, Type, Image as ImageIcon, Eraser,
@@ -70,6 +71,7 @@ function App() {
       <ContextMenu />
       <StylePanel />
       <FindDialog />
+      <HelpDialog />
       
       {/* Top Left Menu */}
       <div className="absolute top-4 left-4 flex gap-2 z-10">

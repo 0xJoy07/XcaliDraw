@@ -21,6 +21,7 @@ export interface AppState {
     textAlign: 'left' | 'center' | 'right';
   };
   isFindOpen?: boolean;
+  isHelpOpen?: boolean;
 }
 
 interface ElementsStore {
@@ -68,7 +69,8 @@ export const useElementsStore = create<ElementsStore>((set) => ({
       fontSize: 20,
       textAlign: 'left'
     },
-    isFindOpen: false
+    isFindOpen: false,
+    isHelpOpen: false
   },
   dirty: true,
   setDirty: () => set({ dirty: true }),
