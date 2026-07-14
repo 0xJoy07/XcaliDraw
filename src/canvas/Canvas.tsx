@@ -192,6 +192,29 @@ export const Canvas: React.FC = () => {
           ctx.fillStyle = currentBg.current;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+          // Draw dotted grid
+          const zoom = state.appState.zoom;
+          let step = 20;
+          let scaledStep = step * zoom;
+          while (scaledStep < 15) {
+            step *= 2;
+            scaledStep = step * zoom;
+          }
+
+          const offsetX = state.appState.scrollX % scaledStep;
+          const offsetY = state.appState.scrollY % scaledStep;
+          const isDark = document.documentElement.classList.contains('dark');
+          ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)';
+
+          ctx.beginPath();
+          for (let x = offsetX - scaledStep; x < canvas.width + scaledStep; x += scaledStep) {
+            for (let y = offsetY - scaledStep; y < canvas.height + scaledStep; y += scaledStep) {
+              ctx.moveTo(x + 1, y);
+              ctx.arc(x, y, 1, 0, Math.PI * 2);
+            }
+          }
+          ctx.fill();
+
           ctx.save();
           ctx.translate(state.appState.scrollX, state.appState.scrollY);
           ctx.scale(state.appState.zoom, state.appState.zoom);
@@ -368,13 +391,13 @@ export const Canvas: React.FC = () => {
             
             if (laserEndTime.current !== null) {
               const elapsed = now - laserEndTime.current;
-              if (elapsed > 400) {
+              if (elapsed > 1000) {
                 laserPoints.current = [];
                 laserEndTime.current = null;
                 rafId = requestAnimationFrame(renderLaser);
                 return;
               }
-              globalAlpha = 1 - (elapsed / 400);
+              globalAlpha = 1 - (elapsed / 1000);
             }
 
             const { appState } = useElementsStore.getState();

@@ -5,6 +5,8 @@ import {
   Moon, Sun, Monitor
 } from 'lucide-react';
 import { useElementsStore } from '../store/elementsStore';
+import { nanoid } from 'nanoid';
+import { imageCache } from '../canvas/renderElement';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -42,12 +44,148 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
     };
   }, [isOpen, onClose]);
 
-  const SectionItem = ({ icon: Icon, label }: { icon: any, label: string }) => (
-    <button className="flex items-center gap-3 w-full px-3 py-2 text-sm text-ui-fg hover:bg-ui-bg-hover rounded-lg transition-colors">
+  const SectionItem = ({ icon: Icon, label, onClick }: { icon: any, label: string, onClick?: () => void }) => (
+    <button 
+      onClick={onClick}
+      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-ui-fg hover:bg-ui-bg-hover rounded-lg transition-colors"
+    >
       <Icon size={16} className="text-ui-fg-muted" />
       <span className="font-medium">{label}</span>
     </button>
   );
+
+  const handleOpen = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,text/*,application/*,.json';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      
+      if (file.type.startsWith('video/')) {
+        alert('Video files are not supported.');
+        return;
+      }
+
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const src = ev.target?.result as string;
+          if (!src) return;
+          const img = new Image();
+          img.onload = () => {
+            imageCache[src] = img;
+            const state = useElementsStore.getState();
+            const { appState } = state;
+            const cx = (window.innerWidth / 2 - appState.scrollX) / appState.zoom;
+            const cy = (window.innerHeight / 2 - appState.scrollY) / appState.zoom;
+            const maxW = Math.min(600, window.innerWidth * 0.5);
+            const maxH = Math.min(400, window.innerHeight * 0.5);
+            const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+            const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+            const el: any = {
+              id: nanoid(), type: 'image',
+              x: cx - w / 2, y: cy - h / 2,
+              width: w, height: h, angle: 0,
+              strokeColor: 'transparent', backgroundColor: 'transparent',
+              strokeWidth: 0, strokeStyle: 'solid', roughness: 0,
+              opacity: 1, isDeleted: false,
+              seed: Math.floor(Math.random() * 2 ** 31),
+              fileId: src,
+            };
+            state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+            state.addElement(el);
+            state.addHistoryPoint();
+          };
+          img.src = src;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const text = await file.text();
+        try {
+          const data = JSON.parse(text);
+          if (Array.isArray(data)) {
+             useElementsStore.setState({ elements: data, dirty: true });
+             return;
+          }
+        } catch (err) {
+          // not JSON array, treat as text file
+        }
+        
+        // Treat as text file
+        const state = useElementsStore.getState();
+        const { appState } = state;
+        const cx = (window.innerWidth / 2 - appState.scrollX) / appState.zoom;
+        const cy = (window.innerHeight / 2 - appState.scrollY) / appState.zoom;
+        
+        const el: any = {
+          id: nanoid(), type: 'text',
+          x: cx - 100, y: cy - 14, width: 200, height: 28, angle: 0,
+          strokeColor: appState.currentItemStyle.strokeColor === 'transparent' ? '#1e1e1e' : appState.currentItemStyle.strokeColor,
+          backgroundColor: 'transparent',
+          strokeWidth: 1, strokeStyle: 'solid',
+          roughness: 0, opacity: 1, isDeleted: false,
+          seed: Math.floor(Math.random() * 2 ** 31),
+          text: text.slice(0, 2000), // truncate if too large
+          fontSize: appState.currentItemStyle.fontSize, 
+          fontFamily: appState.currentItemStyle.fontFamily,
+          textAlign: appState.currentItemStyle.textAlign,
+        };
+        state.addElement(el);
+        state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+        state.addHistoryPoint();
+      }
+    };
+    input.click();
+    onClose();
+  };
+
+  const handleSave = () => {
+    const data = useElementsStore.getState().elements;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `xcalidraw-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    onClose();
+  };
+
+  const handleExportImage = () => {
+    const mainCanvas = document.querySelector('canvas');
+    if (mainCanvas) {
+       const url = mainCanvas.toDataURL('image/png');
+       const a = document.createElement('a');
+       a.href = url;
+       a.download = `xcalidraw-export-${new Date().toISOString().slice(0,10)}.png`;
+       a.click();
+    }
+    onClose();
+  };
+
+  const handleReset = () => {
+    if (window.confirm('Are you sure you want to clear the canvas?')) {
+      useElementsStore.setState({ elements: [], dirty: true });
+      useElementsStore.getState().addHistoryPoint();
+    }
+    onClose();
+  };
+
+  const setTheme = (theme: 'light' | 'dark' | 'system') => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+    setDirty();
+  };
 
   return (
     <>
@@ -59,26 +197,21 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
       >
         <div className="p-4 flex flex-col gap-1">
           {/* Section 1 */}
-          <SectionItem icon={FolderOpen} label="Open" />
-          <SectionItem icon={Save} label="Save to..." />
-          <SectionItem icon={Download} label="Export image..." />
+          <SectionItem icon={FolderOpen} label="Open" onClick={handleOpen} />
+          <SectionItem icon={Save} label="Save to..." onClick={handleSave} />
+          <SectionItem icon={Download} label="Export image..." onClick={handleExportImage} />
           <div className="h-px w-full bg-ui-border my-2"></div>
-          <SectionItem icon={Terminal} label="Command palette" />
-          <SectionItem icon={Search} label="Find" />
-          <SectionItem icon={HelpCircle} label="Help" />
+          <SectionItem icon={Search} label="Find" onClick={() => alert("Find is coming soon!")} />
+          <SectionItem icon={HelpCircle} label="Help" onClick={() => alert("Shortcuts:\\n1-9: Tools\\nH: Hand\\nV: Select\\nSpace: Pan")} />
           <div className="h-px w-full bg-ui-border my-2"></div>
-          <SectionItem icon={RotateCcw} label="Reset the canvas" />
+          <SectionItem icon={RotateCcw} label="Reset the canvas" onClick={handleReset} />
         </div>
 
         <div className="h-2 w-full bg-ui-bg-hover border-y border-ui-border/50"></div>
 
         <div className="p-4 flex flex-col gap-1">
           {/* Section 2 */}
-          <SectionItem icon={GitFork} label="GitHub" />
-          <SectionItem icon={XIcon} label="X" />
-          <SectionItem icon={MessageSquare} label="Discord" />
-          <div className="h-px w-full bg-ui-border my-2"></div>
-          <SectionItem icon={UserPlus} label="Sign up" />
+          <SectionItem icon={GitFork} label="GitHub" onClick={() => window.open('https://github.com/0xJoy07/Xcalidraw', '_blank')} />
         </div>
 
         <div className="h-2 w-full bg-ui-bg-hover border-y border-ui-border/50"></div>
@@ -99,13 +232,13 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-ui-fg-muted uppercase tracking-wider">Theme</span>
                 <div className="flex bg-ui-bg-hover p-1 rounded-lg border border-ui-border">
-                  <button className="flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg">
+                  <button onClick={() => setTheme('dark')} className="flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg">
                     <Moon size={16} />
                   </button>
-                  <button className="flex-1 flex justify-center py-1.5 rounded-md bg-ui-bg shadow-sm border border-ui-border text-indigo-500">
+                  <button onClick={() => setTheme('light')} className="flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg">
                     <Sun size={16} />
                   </button>
-                  <button className="flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg">
+                  <button onClick={() => setTheme('system')} className="flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg">
                     <Monitor size={16} />
                   </button>
                 </div>
@@ -128,14 +261,7 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-ui-fg-muted uppercase tracking-wider">Language</span>
-                <select className="w-full bg-ui-bg border border-ui-border text-ui-fg text-sm rounded-md px-3 py-2 focus:outline-none focus:border-indigo-500">
-                  <option>English</option>
-                  <option>Spanish</option>
-                  <option>French</option>
-                </select>
-              </div>
+
 
             </div>
           )}
