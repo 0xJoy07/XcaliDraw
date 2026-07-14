@@ -1,0 +1,56 @@
+<svg fill="none" viewBox="0 0 800 200" width="800" height="200" xmlns="http://www.w3.org/2000/svg">
+  <foreignObject width="100%" height="100%">
+    <div xmlns="http://www.w3.org/1999/xhtml">
+      <style>
+        .container {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background-color: #000000;
+          color: #ffffff;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          border-radius: 12px;
+          border: 1px solid #333333;
+          position: relative;
+          overflow: hidden;
+        }
+        .title {
+          font-size: 64px;
+          font-weight: 800;
+          letter-spacing: -0.05em;
+          margin: 0;
+          z-index: 10;
+        }
+        .subtitle {
+          font-size: 20px;
+          color: #888888;
+          margin-top: 8px;
+          z-index: 10;
+        }
+        .shape {
+          position: absolute;
+          opacity: 0.1;
+          animation: float 20s infinite linear;
+        }
+        @keyframes float {
+          0% { transform: translate(0, 0) rotate(0deg); }
+          50% { transform: translate(20px, -20px) rotate(180deg); }
+          100% { transform: translate(0, 0) rotate(360deg); }
+        }
+      </style>
+      <div class="container">
+        <svg class="shape" style="top: -50px; left: 100px; width: 200px; height: 200px;" viewBox="0 0 100 100">
+          <rect x="10" y="10" width="80" height="80" fill="none" stroke="#ffffff" stroke-width="2" />
+        </svg>
+        <svg class="shape" style="bottom: -50px; right: 100px; width: 150px; height: 150px; animation-direction: reverse;" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#ffffff" stroke-width="2" />
+        </svg>
+        <h1 class="title">Xcalidraw</h1>
+        <p class="subtitle">A sleek, single-user drawing canvas</p>
+      </div>
+    </div>
+  </foreignObject>
+</svg>
