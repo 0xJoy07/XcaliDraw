@@ -4,12 +4,22 @@ import type { RoughCanvas } from 'roughjs/bin/canvas';
 // Cache for loaded images
 export const imageCache: Record<string, HTMLImageElement> = {};
 
+const getThemeAwareColor = (color: string | undefined) => {
+  const isDark = document.documentElement.classList.contains('dark');
+  const c = (color || '#1e1e1e').toLowerCase();
+  if (isDark && (c === '#1e1e1e' || c === '#000000')) return '#ffffff';
+  if (!isDark && c === '#ffffff') return '#1e1e1e';
+  return c;
+};
+
 export const renderElement = (rc: RoughCanvas, ctx: CanvasRenderingContext2D, element: Element) => {
   if (element.isDeleted) return;
 
+  const stroke = getThemeAwareColor(element.strokeColor);
+
   const options = {
     seed: element.seed,
-    stroke: element.strokeColor || '#1e1e1e',
+    stroke: stroke,
     fill: element.backgroundColor && element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
     fillStyle: 'solid' as const,
     strokeWidth: element.strokeWidth || 1,
@@ -69,7 +79,7 @@ export const renderElement = (rc: RoughCanvas, ctx: CanvasRenderingContext2D, el
       for (let i = 1; i < pts.length; i++) {
         ctx.lineTo(element.x + pts[i].x, element.y + pts[i].y);
       }
-      ctx.strokeStyle = element.strokeColor || '#1e1e1e';
+      ctx.strokeStyle = stroke;
       ctx.lineWidth = element.strokeWidth || 2;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -80,7 +90,7 @@ export const renderElement = (rc: RoughCanvas, ctx: CanvasRenderingContext2D, el
     case 'text': {
       const fontSize = element.fontSize || 20;
       ctx.font = `${fontSize}px ${element.fontFamily || 'sans-serif'}`;
-      ctx.fillStyle = element.strokeColor || '#1e1e1e';
+      ctx.fillStyle = stroke;
       ctx.textBaseline = 'top';
       const textAlign = element.textAlign || 'left';
       ctx.textAlign = textAlign as CanvasTextAlign;

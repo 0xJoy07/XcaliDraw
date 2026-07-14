@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Element } from '../types/element';
 import { updateRbush } from '../canvas/hitTest';
+import { nanoid } from 'nanoid';
 
 export type ToolType = 'select' | 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'line' | 'freedraw' | 'text' | 'image' | 'eraser' | 'hand' | 'laser';
 
@@ -22,6 +23,13 @@ export interface AppState {
   };
   isFindOpen?: boolean;
   isHelpOpen?: boolean;
+  isToolLocked?: boolean;
+}
+
+export interface ToastData {
+  id: string;
+  message: string;
+  type?: 'info' | 'error' | 'success';
 }
 
 interface ElementsStore {
@@ -36,6 +44,9 @@ interface ElementsStore {
   addHistoryPoint: () => void;
   undo: () => void;
   redo: () => void;
+  toasts: ToastData[];
+  addToast: (message: string, type?: ToastData['type']) => void;
+  removeToast: (id: string) => void;
 }
 
 const loadElements = (): Element[] => {
@@ -70,7 +81,8 @@ export const useElementsStore = create<ElementsStore>((set) => ({
       textAlign: 'left'
     },
     isFindOpen: false,
-    isHelpOpen: false
+    isHelpOpen: false,
+    isToolLocked: false
   },
   dirty: true,
   setDirty: () => set({ dirty: true }),
@@ -117,7 +129,19 @@ export const useElementsStore = create<ElementsStore>((set) => ({
       dirty: true,
       appState: { ...state.appState, selectedElementIds: [] } // Clear selection on redo
     };
-  })
+  }),
+  toasts: [],
+  addToast: (message, type = 'info') => set((state) => {
+    const id = nanoid();
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      useElementsStore.getState().removeToast(id);
+    }, 3000);
+    return { toasts: [...state.toasts, { id, message, type }] };
+  }),
+  removeToast: (id) => set((state) => ({
+    toasts: state.toasts.filter(t => t.id !== id)
+  }))
 }));
 
 useElementsStore.subscribe((state, prevState) => {

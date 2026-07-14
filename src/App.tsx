@@ -7,11 +7,13 @@ import { ContextMenu } from './components/ContextMenu';
 import { StylePanel } from './components/StylePanel';
 import { FindDialog } from './components/FindDialog';
 import { HelpDialog } from './components/HelpDialog';
+import { Toasts } from './components/Toasts';
+import { Link } from 'react-router-dom';
+import { BookOpenCheck } from 'lucide-react';
 import { 
-  Lock, Hand, MousePointer2, Square, Diamond, Circle, 
-  MoveRight, Minus, Pen, Type, Image as ImageIcon, Eraser,
-  Library, Moon, Sun, Menu, Share2, Zap
+  Moon, Sun, Menu, Share2
 } from 'lucide-react';
+import { Toolbar } from './components/Toolbar';
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -36,30 +38,7 @@ function App() {
     useElementsStore.getState().setDirty(); // Force canvas to redraw with new background
   }, [theme]);
 
-  const activeTool = useElementsStore((state) => state.appState.activeTool);
-  const setAppState = useElementsStore((state) => state.setAppState);
 
-  const ToolButton = ({ tool, icon: Icon, label, shortcut }: { tool?: any, icon: any, label?: string, shortcut?: string }) => {
-    const isActive = tool && activeTool === tool;
-    return (
-      <button 
-        onClick={() => tool && setAppState({ activeTool: tool })}
-        title={label ? `${label} ${shortcut ? `(${shortcut})` : ''}` : undefined}
-        className={`p-2 flex items-center justify-center rounded-lg transition-colors relative ${
-          isActive 
-            ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' 
-            : 'text-ui-fg hover:bg-ui-bg-hover'
-        }`}
-      >
-        <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-        {shortcut && (
-          <span className="absolute bottom-0.5 right-0.5 text-[9px] text-ui-fg-muted font-medium select-none pointer-events-none">
-            {shortcut}
-          </span>
-        )}
-      </button>
-    );
-  };
 
   return (
     <div 
@@ -87,24 +66,7 @@ function App() {
       </div>
       
       {/* Centered Floating Toolbar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-ui-bg p-1.5 rounded-xl shadow-md border border-ui-border z-10 transition-colors">
-        <ToolButton icon={Lock} label="Keep tool active" />
-        <div className="w-px h-6 bg-ui-border mx-1 transition-colors"></div>
-        <ToolButton tool="hand" icon={Hand} label="Hand (Pan)" />
-        <ToolButton tool="select" icon={MousePointer2} label="Select" shortcut="1" />
-        <ToolButton tool="rectangle" icon={Square} label="Rectangle" shortcut="2" />
-        <ToolButton tool="diamond" icon={Diamond} label="Diamond" shortcut="3" />
-        <ToolButton tool="ellipse" icon={Circle} label="Ellipse" shortcut="4" />
-        <ToolButton tool="arrow" icon={MoveRight} label="Arrow" shortcut="5" />
-        <ToolButton tool="line" icon={Minus} label="Line" shortcut="6" />
-        <ToolButton tool="freedraw" icon={Pen} label="Draw" shortcut="7" />
-        <ToolButton tool="text" icon={Type} label="Text" shortcut="8" />
-        <ToolButton tool="image" icon={ImageIcon} label="Image" shortcut="9" />
-        <ToolButton tool="eraser" icon={Eraser} label="Eraser" shortcut="0" />
-        <ToolButton tool="laser" icon={Zap} label="Laser Pointer" shortcut="l" />
-        <div className="w-px h-6 bg-ui-border mx-1 transition-colors"></div>
-        <ToolButton icon={Library} label="Library" />
-      </div>
+      <Toolbar />
       
       {/* Top Right Actions */}
       <div className="absolute top-4 right-4 flex items-center gap-3 z-10">
@@ -122,10 +84,16 @@ function App() {
           <Share2 size={16} /> Share
         </button>
         
-        <button className="flex items-center gap-2 px-3 py-1.5 border border-indigo-600 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm cursor-pointer transition-colors">
-         AI Optimize
-        </button>
+        <Link 
+          to="/docs" 
+          target="_blank"
+          className="flex items-center gap-2 px-3 py-1.5 border border-indigo-600 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm cursor-pointer transition-colors"
+        >
+         <BookOpenCheck size={16} />
+         Documentations
+        </Link>
       </div>
+      <Toasts />
     </div>
   );
 }

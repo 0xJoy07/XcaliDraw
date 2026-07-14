@@ -1,6 +1,4 @@
 import { useElementsStore } from '../store/elementsStore';
-import { nanoid } from 'nanoid';
-
 export const handleSaveAction = () => {
   const data = useElementsStore.getState().elements;
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

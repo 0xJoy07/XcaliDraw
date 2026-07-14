@@ -80,9 +80,13 @@ const TextEditorOverlay = ({
         fontFamily: element.fontFamily || 'sans-serif',
         fontWeight: element.strokeWidth === 4 ? 800 : element.strokeWidth === 2 ? 600 : 400,
         textAlign: element.textAlign || 'left',
-        color: (element.strokeColor === 'transparent' || !element.strokeColor || element.strokeColor === '#000000') 
-          ? (document.documentElement.classList.contains('dark') ? '#fff' : '#1e1e1e')
-          : element.strokeColor,
+        color: (() => {
+          const c = (element.strokeColor || '').toLowerCase();
+          if (c === 'transparent' || !c || c === '#000000' || c === '#1e1e1e') {
+            return document.documentElement.classList.contains('dark') ? '#fff' : '#1e1e1e';
+          }
+          return element.strokeColor;
+        })(),
         background: 'transparent',
         border: 'none',
         outline: 'none',
@@ -146,8 +150,7 @@ export const Canvas: React.FC = () => {
   const origElems = useRef<Record<string, Element>>({});
 
   // laser
-  const laserPoints = useRef<{ x: number; y: number }[]>([]);
-  const laserEndTime = useRef<number | null>(null);
+  const laserLines = useRef<{ points: { x: number; y: number }[]; endTime: number | null }[]>([]);
 
   // canvas bg lerp
   const currentBg = useRef('#f8f9fa');
@@ -338,6 +341,14 @@ export const Canvas: React.FC = () => {
         e.preventDefault();
       }
 
+      if (useElementsStore.getState().appState.isToolLocked) {
+        const isModifierOnly = ['Control', 'Shift', 'Alt', 'Meta'].includes(e.key);
+        if (!isModifierOnly && e.code !== 'Space') {
+          useElementsStore.getState().addToast('Canvas is locked. Unlock to edit.', 'error');
+        }
+        return;
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const state = useElementsStore.getState();
         if (state.appState.selectedElementIds.length > 0) {
@@ -385,49 +396,54 @@ export const Canvas: React.FC = () => {
         const ctx = lc.getContext('2d');
         if (ctx) {
           ctx.clearRect(0, 0, lc.width, lc.height);
-          if (laserPoints.current.length > 1) {
+          if (laserLines.current.length > 0) {
             const now = performance.now();
-            let globalAlpha = 1;
-            
-            if (laserEndTime.current !== null) {
-              const elapsed = now - laserEndTime.current;
-              if (elapsed > 1000) {
-                laserPoints.current = [];
-                laserEndTime.current = null;
-                rafId = requestAnimationFrame(renderLaser);
-                return;
-              }
-              globalAlpha = 1 - (elapsed / 1000);
-            }
-
             const { appState } = useElementsStore.getState();
+            
             ctx.save();
-            ctx.globalAlpha = globalAlpha;
             ctx.translate(appState.scrollX, appState.scrollY);
             ctx.scale(appState.zoom, appState.zoom);
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
 
-            ctx.beginPath();
-            ctx.moveTo(laserPoints.current[0].x, laserPoints.current[0].y);
-            for (let i = 1; i < laserPoints.current.length; i++) {
-              ctx.lineTo(laserPoints.current[i].x, laserPoints.current[i].y);
-            }
-            
-            // Outer glow
-            ctx.strokeStyle = 'rgba(255, 50, 50, 0.7)';
-            ctx.shadowBlur = 15 / appState.zoom;
-            ctx.shadowColor = 'rgba(255, 50, 50, 1)';
-            ctx.lineWidth = 6 / appState.zoom;
-            ctx.stroke();
+            const remainingLines = [];
 
-            // Inner core
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2.5 / appState.zoom;
-            ctx.stroke();
+            for (const line of laserLines.current) {
+              let globalAlpha = 1;
+              if (line.endTime !== null) {
+                const elapsed = now - line.endTime;
+                if (elapsed > 1000) {
+                  continue; // fade out complete
+                }
+                globalAlpha = 1 - (elapsed / 1000);
+              }
+              remainingLines.push(line);
+
+              if (line.points.length < 2) continue;
+
+              ctx.globalAlpha = globalAlpha;
+              ctx.beginPath();
+              ctx.moveTo(line.points[0].x, line.points[0].y);
+              for (let i = 1; i < line.points.length; i++) {
+                ctx.lineTo(line.points[i].x, line.points[i].y);
+              }
+              
+              // Outer glow
+              ctx.strokeStyle = 'rgba(255, 50, 50, 0.7)';
+              ctx.shadowBlur = 15 / appState.zoom;
+              ctx.shadowColor = 'rgba(255, 50, 50, 1)';
+              ctx.lineWidth = 6 / appState.zoom;
+              ctx.stroke();
+
+              // Inner core
+              ctx.shadowBlur = 0;
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 2.5 / appState.zoom;
+              ctx.stroke();
+            }
 
             ctx.restore();
+            laserLines.current = remainingLines;
           }
         }
       }
@@ -475,7 +491,11 @@ export const Canvas: React.FC = () => {
             seed: Math.floor(Math.random() * 2 ** 31),
             fileId: src,
           };
-          state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+              if (!state.appState.isToolLocked) {
+                state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+              } else {
+                state.setAppState({ selectedElementIds: [el.id] });
+              }
           state.addElement(el);
           state.addHistoryPoint();
         };
@@ -529,7 +549,11 @@ export const Canvas: React.FC = () => {
                 seed: Math.floor(Math.random() * 2 ** 31),
                 fileId: src,
               };
-              state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+                  if (!state.appState.isToolLocked) {
+                state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+              } else {
+                state.setAppState({ selectedElementIds: [el.id] });
+              }
               state.addElement(el);
               state.addHistoryPoint();
             };
@@ -587,6 +611,17 @@ export const Canvas: React.FC = () => {
     if (e.button === 2) return;
 
     const isMiddle = e.button === 1;
+    if (state.appState.isToolLocked && state.appState.activeTool !== 'laser') {
+      if (state.appState.activeTool !== 'hand' && !isMiddle && !isSpacePressed.current) {
+        state.addToast('Canvas is locked. Unlock to edit.', 'error');
+      }
+      isPanning.current = true;
+      lastScreen.current = { x: e.clientX, y: e.clientY };
+      setCursor('grabbing');
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
+
     if (state.appState.activeTool === 'hand' || isMiddle || isSpacePressed.current) {
       isPanning.current = true;
       lastScreen.current = { x: e.clientX, y: e.clientY };
@@ -601,8 +636,7 @@ export const Canvas: React.FC = () => {
 
     // ── Laser ──
     if (state.appState.activeTool === 'laser') {
-      laserPoints.current = [{ x, y }];
-      laserEndTime.current = null;
+      laserLines.current.push({ points: [{ x, y }], endTime: null });
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
@@ -647,7 +681,11 @@ export const Canvas: React.FC = () => {
         textAlign: state.appState.currentItemStyle.textAlign,
       };
       state.addElement(el);
-      state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+      if (!state.appState.isToolLocked) {
+        state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+      } else {
+        state.setAppState({ selectedElementIds: [el.id] });
+      }
       // Set editing AFTER store update, using ref+state
       setEditingTextId(el.id);
       return;
@@ -748,7 +786,10 @@ export const Canvas: React.FC = () => {
     const { x, y } = screenToWorld(e.clientX, e.clientY, state.appState);
 
     if (state.appState.activeTool === 'laser' && e.buttons === 1) {
-      laserPoints.current.push({ x, y });
+      const activeLine = laserLines.current.find(l => l.endTime === null);
+      if (activeLine) {
+        activeLine.points.push({ x, y });
+      }
       return;
     }
 
@@ -844,7 +885,10 @@ export const Canvas: React.FC = () => {
       return;
     }
     if (state.appState.activeTool === 'laser') {
-      laserEndTime.current = performance.now();
+      const activeLine = laserLines.current.find(l => l.endTime === null);
+      if (activeLine) {
+        activeLine.endTime = performance.now();
+      }
       e.currentTarget.releasePointerCapture(e.pointerId);
       return;
     }
@@ -881,8 +925,15 @@ export const Canvas: React.FC = () => {
       if (el) {
         if (el.type !== 'freedraw' && Math.abs(el.width) < 2 && Math.abs(el.height) < 2) {
           state.updateElement(el.id, { isDeleted: true });
+          if (!state.appState.isToolLocked) {
+            state.setAppState({ activeTool: 'select' });
+          }
         } else {
-          state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+          if (!state.appState.isToolLocked) {
+            state.setAppState({ selectedElementIds: [el.id], activeTool: 'select' });
+          } else {
+            state.setAppState({ selectedElementIds: [el.id] });
+          }
           state.addHistoryPoint();
         }
       }
@@ -895,6 +946,10 @@ export const Canvas: React.FC = () => {
   // ── Double Click ─────────────────────────────────────────────────────────────
   const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const state = useElementsStore.getState();
+    if (state.appState.isToolLocked) {
+      state.addToast('Canvas is locked. Unlock to edit.', 'error');
+      return;
+    }
     const { x, y } = screenToWorld(e.clientX, e.clientY, state.appState);
     const hit = hitTest(x, y);
     if (hit && hit.type === 'text' && !hit.isDeleted) {
@@ -914,7 +969,11 @@ export const Canvas: React.FC = () => {
         textAlign: state.appState.currentItemStyle.textAlign,
       };
       state.addElement(el);
-      state.setAppState({ activeTool: 'select', selectedElementIds: [el.id] });
+      if (!state.appState.isToolLocked) {
+        state.setAppState({ activeTool: 'select', selectedElementIds: [el.id] });
+      } else {
+        state.setAppState({ selectedElementIds: [el.id] });
+      }
       setEditingTextId(el.id);
     }
   };

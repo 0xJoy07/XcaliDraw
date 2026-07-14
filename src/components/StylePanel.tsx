@@ -15,14 +15,14 @@ const STROKE_COLORS = [
 
 const BG_COLORS = [
   { value: 'transparent', label: 'None' },
-  { value: '#fff9db', label: 'Yellow tint' },
-  { value: '#ffd8a8', label: 'Peach tint' },
-  { value: '#ffc9c9', label: 'Red tint' },
-  { value: '#d3f9d8', label: 'Green tint' },
-  { value: '#a5d8ff', label: 'Blue tint' },
-  { value: '#e5dbff', label: 'Purple tint' },
-  { value: '#1e1e1e', label: 'Dark' },
-  { value: '#ffffff', label: 'White' },
+  { value: '#fff9db80', label: 'Yellow tint' },
+  { value: '#ffd8a880', label: 'Peach tint' },
+  { value: '#ffc9c980', label: 'Red tint' },
+  { value: '#d3f9d880', label: 'Green tint' },
+  { value: '#a5d8ff80', label: 'Blue tint' },
+  { value: '#e5dbff80', label: 'Purple tint' },
+  { value: '#1e1e1e80', label: 'Dark' },
+  { value: '#ffffff80', label: 'White' },
 ];
 
 // Mini SVG previews for stroke styles

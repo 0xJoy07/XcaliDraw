@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { 
-  FolderOpen, Save, Download, Terminal, Search, HelpCircle, RotateCcw,
-  GitFork, X as XIcon, MessageSquare, UserPlus, ChevronDown, ChevronUp,
+  FolderOpen, Save, Download, Search, HelpCircle, RotateCcw,
+  GitFork, ChevronDown, ChevronUp,
   Moon, Sun, Monitor
 } from 'lucide-react';
 import { useElementsStore } from '../store/elementsStore';
