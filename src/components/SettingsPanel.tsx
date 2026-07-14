@@ -201,7 +201,10 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
           <SectionItem icon={Save} label="Save to..." onClick={handleSave} />
           <SectionItem icon={Download} label="Export image..." onClick={handleExportImage} />
           <div className="h-px w-full bg-ui-border my-2"></div>
-          <SectionItem icon={Search} label="Find" onClick={() => alert("Find is coming soon!")} />
+          <SectionItem icon={Search} label="Find" onClick={() => {
+            useElementsStore.getState().setAppState({ isFindOpen: true });
+            onClose();
+          }} />
           <SectionItem icon={HelpCircle} label="Help" onClick={() => alert("Shortcuts:\\n1-9: Tools\\nH: Hand\\nV: Select\\nSpace: Pan")} />
           <div className="h-px w-full bg-ui-border my-2"></div>
           <SectionItem icon={RotateCcw} label="Reset the canvas" onClick={handleReset} />

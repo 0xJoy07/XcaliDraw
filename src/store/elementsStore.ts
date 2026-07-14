@@ -20,6 +20,7 @@ export interface AppState {
     fontSize: number;
     textAlign: 'left' | 'center' | 'right';
   };
+  isFindOpen?: boolean;
 }
 
 interface ElementsStore {
@@ -66,7 +67,8 @@ export const useElementsStore = create<ElementsStore>((set) => ({
       fontFamily: 'sans-serif',
       fontSize: 20,
       textAlign: 'left'
-    }
+    },
+    isFindOpen: false
   },
   dirty: true,
   setDirty: () => set({ dirty: true }),
