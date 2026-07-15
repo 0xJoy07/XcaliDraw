@@ -41,6 +41,12 @@ Elements can be customized via the properties panel, allowing modifications to:
 - Font family and size
 - Dark and Light mode synchronization at the app root
 
+### Account Authentication
+Users can register and log in with email/password, or continue with Google and GitHub OAuth. Sessions use short-lived JWT access tokens in client memory plus httpOnly refresh cookies, with refresh-token rotation handled by the Express/MongoDB server.
+
+### Per-Account Canvas Persistence
+Each signed-in user has a dashboard of saved canvases loaded through a lightweight list endpoint. Opening a canvas fetches the full document, and edits autosave back to MongoDB with retry handling for temporary network failures.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./assets/divider-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="./assets/divider-light.svg">

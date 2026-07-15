@@ -8,16 +8,24 @@ import { StylePanel } from './components/StylePanel';
 import { FindDialog } from './components/FindDialog';
 import { HelpDialog } from './components/HelpDialog';
 import { Toasts } from './components/Toasts';
-import { Link } from 'react-router-dom';
-import { BookOpenCheck } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { BookOpenCheck, LogOut } from 'lucide-react';
 import { 
   Moon, Sun, Menu, Share2
 } from 'lucide-react';
 import { Toolbar } from './components/Toolbar';
+import { useAuth } from './auth/AuthContext';
+import { getCanvas } from './lib/canvasApi';
+import { useCanvasAutosave } from './hooks/useCanvasAutosave';
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const { canvasId } = useParams();
+  const { user, logout, authenticatedFetch } = useAuth();
+  const saveStatus = useCanvasAutosave(canvasId, canvasReady, authenticatedFetch);
 
   useEffect(() => {
     // Detect system theme
@@ -38,7 +46,48 @@ function App() {
     useElementsStore.getState().setDirty(); // Force canvas to redraw with new background
   }, [theme]);
 
+  useEffect(() => {
+    if (!canvasId) return;
+    let cancelled = false;
 
+    setCanvasReady(false);
+    setLoadError('');
+
+    getCanvas(authenticatedFetch, canvasId)
+      .then((response) => {
+        if (cancelled) return;
+        useElementsStore.getState().hydrateCanvas(response.canvas.elements, response.canvas.appState);
+        setCanvasReady(true);
+      })
+      .catch((caught) => {
+        if (cancelled) return;
+        setLoadError((caught as Error).message || 'Could not load canvas');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticatedFetch, canvasId]);
+
+  if (loadError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-canvas-bg text-ui-fg">
+        <div className="border border-ui-border bg-ui-bg p-6 shadow-sm">
+          <p className="font-medium">Canvas unavailable</p>
+          <p className="mt-2 text-sm text-red-500">{loadError}</p>
+          <Link to="/" className="mt-4 inline-block text-sm underline">Back to canvases</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canvasReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-canvas-bg text-ui-fg">
+        Loading canvas...
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -63,6 +112,18 @@ function App() {
         >
           <Menu size={20} />
         </button>
+        <Link
+          to="/"
+          className="rounded-lg border border-ui-border bg-ui-bg px-3 py-2 text-sm font-medium shadow-sm hover:bg-ui-bg-hover"
+        >
+          Canvases
+        </Link>
+        <div className="rounded-lg border border-ui-border bg-ui-bg px-3 py-2 text-sm shadow-sm">
+          {saveStatus === 'saving' && 'Saving...'}
+          {saveStatus === 'saved' && 'Saved'}
+          {saveStatus === 'failed' && 'Save failed - retrying'}
+          {saveStatus === 'idle' && 'Saved'}
+        </div>
       </div>
       
       {/* Centered Floating Toolbar */}
@@ -70,6 +131,20 @@ function App() {
       
       {/* Top Right Actions */}
       <div className="absolute top-4 right-4 flex items-center gap-3 z-10">
+        <div className="hidden sm:flex items-center gap-2 rounded-lg border border-ui-border bg-ui-bg px-3 py-1.5 text-sm shadow-sm">
+          {user?.avatarUrl ? (
+            <img src={user.avatarUrl} alt="" className="h-5 w-5 rounded-full" referrerPolicy="no-referrer" />
+          ) : null}
+          <span className="max-w-36 truncate">{user?.name || user?.email}</span>
+          <button
+            onClick={logout}
+            className="rounded-md p-1 hover:bg-ui-bg-hover"
+            title="Log out"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+
         <div className="flex bg-ui-bg rounded-lg shadow-sm border border-ui-border p-1 transition-colors">
           <button 
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}

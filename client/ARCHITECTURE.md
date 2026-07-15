@@ -14,8 +14,16 @@ Xcalidraw is a React-based application that heavily utilizes the HTML5 `<canvas>
 graph TD
     subgraph UI Layer
         React[React DOM UI]
+        Auth[Auth Context]
         Toolbar[Toolbar & Tools]
         Settings[Settings Panel]
+    end
+
+    subgraph Server Layer
+        Express[Express Auth API]
+        CanvasAPI[Canvas Persistence API]
+        Passport[Passport OAuth]
+        Mongo[(MongoDB)]
     end
 
     subgraph State Management
@@ -38,6 +46,11 @@ graph TD
 
     Toolbar -->|Mutates| Zustand
     Settings -->|Mutates| Zustand
+    Auth -->|Protects| React
+    Auth -->|Calls| Express
+    Express -->|Stores users and refresh tokens| Mongo
+    CanvasAPI -->|Stores canvas documents| Mongo
+    Express -->|Delegates OAuth| Passport
     Zustand -->|Updates| Elements
     Zustand -->|Updates| AppState
     Elements -.->|Synchronized to| RBush
@@ -81,6 +94,12 @@ The application maintains two distinct coordinate systems:
 2. **World Coordinates:** The infinite conceptual canvas space.
 
 Helper functions (`screenToWorld` and `worldToScreen`) apply the current `appState.zoom` and `appState.scroll` values to seamlessly translate between these spaces during interactions.
+
+### 5. Authentication Boundary
+Authentication lives outside the canvas renderer. The React client keeps the short-lived access token in memory and relies on an httpOnly refresh cookie for silent session renewal. The Express server owns registration, login, OAuth callbacks, refresh-token rotation, and user lookup through MongoDB. The canvas route is protected at the React Router layer, while the docs route remains public.
+
+### 6. Canvas Persistence
+Canvas documents are stored through the server API, never directly from the browser to MongoDB. The client hydrates the Zustand store from `/api/canvases/:id`, then autosaves debounced updates back to the same document. Element updates send the serialized element array as-is, while frequent pan and zoom changes send a smaller `appState` patch. Local storage is only used as a draft cache when a save fails and needs retrying.
 
 > **Deep Dive:** For full implementation details and code snippets, see the `/docs/architecture` section in the live application.
 

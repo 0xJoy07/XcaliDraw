@@ -33,21 +33,25 @@ Xcalidraw is a fast, unopinionated, single-user drawing canvas built with a hand
 
 ## 🚀 Quick Start
 
-To get Xcalidraw running locally, clone the repository and start the Vite development server.
+To get Xcalidraw running locally, clone the repository, start the auth server, then start the Vite development server.
 
 ```bash
 # Clone the repository
 git clone https://github.com/0xJoy07/Xcalidraw.git
 cd Xcalidraw
 
-# Install dependencies
+# Install and start the auth server
+cd server
 npm install
+npm run dev
 
-# Start the development server
+# In a second terminal, install and start the client
+cd ../client
+npm install
 npm run dev
 ```
 
-Visit `http://localhost:5173` to view the application.
+The client reads `client/.env`, and the server reads `server/.env`. Visit `http://localhost:5173` to view the application.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./assets/divider-dark.svg">
@@ -62,6 +66,8 @@ Xcalidraw focuses on core diagramming mechanics with a custom infinite canvas re
 - **Dynamic Canvas:** Hand-drawn shapes, precise hit-testing, and dynamic grid layouts.
 - **Tools:** Move, resize, free-draw, text editing, and an ephemeral laser pointer.
 - **Styling:** Fully customizable stroke colors, background fills, fonts, and "roughness" levels.
+- **Authentication:** Email/password plus Google and GitHub OAuth via the custom Express/MongoDB server.
+- **Cloud Persistence:** Canvas documents autosave to MongoDB under the signed-in user account, with local draft caching only for failed saves.
 
 Read the detailed feature breakdown in [FEATURES.md](./FEATURES.md).
 
@@ -75,6 +81,7 @@ Read the detailed feature breakdown in [FEATURES.md](./FEATURES.md).
 
 Xcalidraw avoids heavy frameworks, relying strictly on specialized libraries for rendering and spatial data structures:
 - **UI Framework:** [React 19](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **API Server:** [Express](https://expressjs.com/), [MongoDB](https://www.mongodb.com/), JWT access tokens, httpOnly refresh cookies, and per-user canvas persistence
 - **State Management:** [Zustand](https://github.com/pmndrs/zustand)
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
 - **Icons:** [Lucide React](https://lucide.dev/)

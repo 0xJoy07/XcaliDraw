@@ -37,6 +37,7 @@ interface ElementsStore {
   appState: AppState;
   dirty: boolean;
   setDirty: () => void;
+  hydrateCanvas: (elements?: Element[] | null, appState?: Partial<AppState> | null) => void;
   setAppState: (state: Partial<AppState>) => void;
   addElement: (element: Element) => void;
   updateElement: (id: string, updates: Partial<Element>) => void;
@@ -49,43 +50,49 @@ interface ElementsStore {
   removeToast: (id: string) => void;
 }
 
-const loadElements = (): Element[] => {
-  try {
-    const data = localStorage.getItem('xcalidraw-elements');
-    if (data) return JSON.parse(data);
-  } catch (e) {
-    console.error('Failed to load elements', e);
-  }
-  return [];
-};
+const createInitialAppState = (): AppState => ({
+  scrollX: 0,
+  scrollY: 0,
+  zoom: 1,
+  selectedElementIds: [],
+  activeTool: 'select',
+  contextMenu: null,
+  currentItemStyle: {
+    strokeColor: '#000000',
+    backgroundColor: 'transparent',
+    strokeWidth: 1,
+    roughness: 1,
+    fontFamily: 'sans-serif',
+    fontSize: 20,
+    textAlign: 'left'
+  },
+  isFindOpen: false,
+  isHelpOpen: false,
+  isToolLocked: false
+});
 
-const initialElements = loadElements();
-updateRbush(initialElements);
+updateRbush([]);
 
 export const useElementsStore = create<ElementsStore>((set) => ({
-  elements: initialElements,
-  appState: {
-    scrollX: 0,
-    scrollY: 0,
-    zoom: 1,
-    selectedElementIds: [],
-    activeTool: 'select',
-    contextMenu: null,
-    currentItemStyle: {
-      strokeColor: '#000000',
-      backgroundColor: 'transparent',
-      strokeWidth: 1,
-      roughness: 1,
-      fontFamily: 'sans-serif',
-      fontSize: 20,
-      textAlign: 'left'
-    },
-    isFindOpen: false,
-    isHelpOpen: false,
-    isToolLocked: false
-  },
+  elements: [],
+  appState: createInitialAppState(),
   dirty: true,
   setDirty: () => set({ dirty: true }),
+  hydrateCanvas: (elements, appState) => set(() => {
+    const nextElements = elements || [];
+    updateRbush(nextElements);
+    return {
+      elements: nextElements,
+      appState: {
+        ...createInitialAppState(),
+        ...(appState || {}),
+        selectedElementIds: [],
+        contextMenu: null,
+      },
+      history: { past: [], future: [] },
+      dirty: true,
+    };
+  }),
   setAppState: (newState) => set((state) => ({ appState: { ...state.appState, ...newState }, dirty: true })),
   addElement: (element) => set((state) => {
     const newElements = [...state.elements, element];
@@ -143,13 +150,3 @@ export const useElementsStore = create<ElementsStore>((set) => ({
     toasts: state.toasts.filter(t => t.id !== id)
   }))
 }));
-
-useElementsStore.subscribe((state, prevState) => {
-  if (state.elements !== prevState.elements) {
-    try {
-      localStorage.setItem('xcalidraw-elements', JSON.stringify(state.elements));
-    } catch (e) {
-      console.error('Failed to save elements', e);
-    }
-  }
-});
