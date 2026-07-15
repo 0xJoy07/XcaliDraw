@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 error.md
+
+# AI Assistant Context
+brain.md
