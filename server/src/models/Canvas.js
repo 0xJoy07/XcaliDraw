@@ -24,9 +24,13 @@ const canvasSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  publicRole: {
+    type: String,
+    enum: ['viewer', 'editor', null],
+    default: null,
+  },
   shareToken: {
     type: String,
-    default: null,
   },
 }, { timestamps: true });
 

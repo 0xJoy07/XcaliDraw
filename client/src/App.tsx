@@ -9,23 +9,30 @@ import { FindDialog } from './components/FindDialog';
 import { HelpDialog } from './components/HelpDialog';
 import { Toasts } from './components/Toasts';
 import { Link, useParams } from 'react-router-dom';
-import { BookOpenCheck, LogOut } from 'lucide-react';
-import { 
-  Moon, Sun, Menu, Share2
-} from 'lucide-react';
+import { BookOpenCheck, LogOut, Moon, Sun, Menu, Share2, Shield, Eye, Edit2 } from 'lucide-react';
 import { Toolbar } from './components/Toolbar';
 import { useAuth } from './auth/AuthContext';
-import { getCanvas } from './lib/canvasApi';
+import { getCanvas, getSharedCanvas, type SavedCanvas, type CanvasAccessRole } from './lib/canvasApi';
 import { useCanvasAutosave } from './hooks/useCanvasAutosave';
+import { ShareModal } from './components/ShareModal';
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [canvasReady, setCanvasReady] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const { canvasId } = useParams();
-  const { user, logout, authenticatedFetch } = useAuth();
-  const saveStatus = useCanvasAutosave(canvasId, canvasReady, authenticatedFetch);
+  
+  const { canvasId, shareToken } = useParams();
+  const { user, accessToken, logout, authenticatedFetch } = useAuth();
+  
+  const [canvasAccessRole, setCanvasAccessRole] = useState<CanvasAccessRole>('none');
+  const [currentCanvas, setCurrentCanvas] = useState<SavedCanvas | null>(null);
+
+  const targetCanvasId = canvasId || currentCanvas?.id;
+  const isEditingAllowed = canvasAccessRole === 'owner' || canvasAccessRole === 'editor';
+  
+  const saveStatus = useCanvasAutosave(targetCanvasId, canvasReady && isEditingAllowed, authenticatedFetch);
 
   useEffect(() => {
     // Detect system theme
@@ -47,35 +54,60 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    if (!canvasId) return;
+    if (!canvasId && !shareToken) return;
     let cancelled = false;
 
     setCanvasReady(false);
     setLoadError('');
 
-    getCanvas(authenticatedFetch, canvasId)
+    const fetchPromise = shareToken 
+      ? getSharedCanvas(shareToken, accessToken)
+      : getCanvas(authenticatedFetch, canvasId!);
+
+    fetchPromise
       .then((response) => {
         if (cancelled) return;
+        
+        const role = response.canvas.role || 'owner';
+        setCanvasAccessRole(role);
+        setCurrentCanvas(response.canvas);
+        
+        // If viewer, lock canvas and disable drawing
+        if (role === 'viewer') {
+          useElementsStore.getState().setAppState({ 
+            isToolLocked: true,
+            activeTool: 'hand'
+          });
+        }
+        
         useElementsStore.getState().hydrateCanvas(response.canvas.elements, response.canvas.appState);
         setCanvasReady(true);
       })
       .catch((caught) => {
         if (cancelled) return;
         setLoadError((caught as Error).message || 'Could not load canvas');
+        setCanvasAccessRole('none');
       });
 
     return () => {
       cancelled = true;
     };
-  }, [authenticatedFetch, canvasId]);
+  }, [authenticatedFetch, canvasId, shareToken, accessToken]);
 
   if (loadError) {
     return (
       <div className="flex h-screen items-center justify-center bg-canvas-bg text-ui-fg">
-        <div className="border border-ui-border bg-ui-bg p-6 shadow-sm">
-          <p className="font-medium">Canvas unavailable</p>
-          <p className="mt-2 text-sm text-red-500">{loadError}</p>
-          <Link to="/" className="mt-4 inline-block text-sm underline">Back to canvases</Link>
+        <div className="border border-ui-border bg-ui-bg p-6 shadow-sm rounded-lg max-w-sm w-full text-center">
+          <p className="font-medium text-lg">Access Denied</p>
+          <p className="mt-2 text-sm text-ui-fg-muted">{loadError}</p>
+          {(!user && canvasAccessRole === 'none') ? (
+            <div className="mt-6 flex flex-col gap-2">
+              <Link to="/login" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">Log in</Link>
+              <Link to="/" className="px-4 py-2 border border-ui-border rounded-md text-sm font-medium hover:bg-ui-bg-hover">Back to home</Link>
+            </div>
+          ) : (
+            <Link to="/" className="mt-4 inline-block px-4 py-2 border border-ui-border rounded-md text-sm font-medium hover:bg-ui-bg-hover">Back to canvases</Link>
+          )}
         </div>
       </div>
     );
@@ -89,85 +121,128 @@ function App() {
     );
   }
 
+  const roleBadge = () => {
+    switch (canvasAccessRole) {
+      case 'owner': return <span className="flex items-center gap-1 text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 px-2 py-1 rounded-md"><Shield size={12}/> Owner</span>;
+      case 'editor': return <span className="flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 px-2 py-1 rounded-md"><Edit2 size={12}/> Editing</span>;
+      case 'viewer': return <span className="flex items-center gap-1 text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 px-2 py-1 rounded-md"><Eye size={12}/> Viewing Only</span>;
+      default: return null;
+    }
+  };
+
   return (
-    <div 
-      className="relative w-screen h-screen overflow-hidden text-ui-fg"
-    >
-      <Canvas />
-      <SettingsPanel isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className="relative w-screen h-screen overflow-hidden text-ui-fg">
+      <Canvas readOnly={canvasAccessRole === 'viewer'} />
+      {canvasAccessRole !== 'viewer' && (
+        <SettingsPanel isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      )}
       <ZoomIndicator />
-      <ContextMenu />
-      <StylePanel />
+      {canvasAccessRole !== 'viewer' && <ContextMenu />}
+      {canvasAccessRole !== 'viewer' && <StylePanel />}
       <FindDialog />
       <HelpDialog />
       
-      {/* Top Left Menu */}
-      <div className="absolute top-4 left-4 flex gap-2 z-10">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsSidebarOpen(!isSidebarOpen);
-          }}
-          className="p-2 border border-ui-border rounded-lg bg-ui-bg text-ui-fg cursor-pointer hover:bg-ui-bg-hover shadow-sm transition-colors"
-        >
-          <Menu size={20} />
-        </button>
-        <Link
-          to="/"
-          className="rounded-lg border border-ui-border bg-ui-bg px-3 py-2 text-sm font-medium shadow-sm hover:bg-ui-bg-hover"
-        >
-          Canvases
-        </Link>
-        <div className="rounded-lg border border-ui-border bg-ui-bg px-3 py-2 text-sm shadow-sm">
-          {saveStatus === 'saving' && 'Saving...'}
-          {saveStatus === 'saved' && 'Saved'}
-          {saveStatus === 'failed' && 'Save failed - retrying'}
-          {saveStatus === 'idle' && 'Saved'}
-        </div>
-      </div>
-      
-      {/* Centered Floating Toolbar */}
-      <Toolbar />
-      
-      {/* Top Right Actions */}
-      <div className="absolute top-4 right-4 flex items-center gap-3 z-10">
-        <div className="hidden sm:flex items-center gap-2 rounded-lg border border-ui-border bg-ui-bg px-3 py-1.5 text-sm shadow-sm">
-          {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="" className="h-5 w-5 rounded-full" referrerPolicy="no-referrer" />
-          ) : null}
-          <span className="max-w-36 truncate">{user?.name || user?.email}</span>
-          <button
-            onClick={logout}
-            className="rounded-md p-1 hover:bg-ui-bg-hover"
-            title="Log out"
+      {/* Top Header Layer */}
+      <div className="absolute top-4 inset-x-4 flex flex-col md:flex-row justify-between items-center gap-4 z-10 pointer-events-none">
+        
+        {/* Top Left Menu */}
+        <div className="flex items-center gap-2 pointer-events-auto w-full md:w-auto justify-start">
+          {canvasAccessRole !== 'viewer' && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSidebarOpen(!isSidebarOpen);
+              }}
+              className="p-2 border border-ui-border rounded-lg bg-ui-bg text-ui-fg cursor-pointer hover:bg-ui-bg-hover shadow-sm transition-colors"
+            >
+              <Menu size={20} />
+            </button>
+          )}
+          <Link
+            to="/"
+            className="rounded-lg border border-ui-border bg-ui-bg px-3 py-2 text-sm font-medium shadow-sm hover:bg-ui-bg-hover"
           >
-            <LogOut size={16} />
-          </button>
+            {user ? 'Canvases' : 'Home'}
+          </Link>
+          
+          {roleBadge()}
+
+          {isEditingAllowed && (
+            <div className="rounded-lg border border-ui-border bg-ui-bg px-3 py-2 text-sm shadow-sm hidden sm:block">
+              {saveStatus === 'saving' && 'Saving...'}
+              {saveStatus === 'saved' && 'Saved'}
+              {saveStatus === 'failed' && 'Save failed - retrying'}
+              {saveStatus === 'idle' && 'Saved'}
+            </div>
+          )}
         </div>
 
-        <div className="flex bg-ui-bg rounded-lg shadow-sm border border-ui-border p-1 transition-colors">
-          <button 
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            className="p-1.5 rounded-md text-ui-fg hover:bg-ui-bg-hover transition-colors"
-            title="Toggle theme"
+        {/* Centered Floating Toolbar */}
+        {canvasAccessRole !== 'viewer' && (
+          <div className="pointer-events-auto flex-shrink-0 mx-auto w-full md:w-auto overflow-x-auto hide-scrollbar">
+            <Toolbar />
+          </div>
+        )}
+        
+        {/* Top Right Actions */}
+        <div className="flex items-center justify-end gap-2 sm:gap-3 pointer-events-auto w-full md:w-auto">
+          {user ? (
+            <div className="hidden lg:flex items-center gap-2 rounded-lg border border-ui-border bg-ui-bg px-3 py-1.5 text-sm shadow-sm">
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" className="h-5 w-5 rounded-full" referrerPolicy="no-referrer" />
+              ) : null}
+              <span className="max-w-32 truncate">{user.name || user.email}</span>
+              <button
+                onClick={logout}
+                className="rounded-md p-1 hover:bg-ui-bg-hover"
+                title="Log out"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 shadow-sm">
+              Log in
+            </Link>
+          )}
+
+          <div className="flex bg-ui-bg rounded-lg shadow-sm border border-ui-border p-1 transition-colors">
+            <button 
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="p-1.5 rounded-md text-ui-fg hover:bg-ui-bg-hover transition-colors"
+              title="Toggle theme"
+            >
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+          </div>
+          
+          {canvasAccessRole === 'owner' && (
+            <button 
+              onClick={() => setIsShareModalOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 border border-ui-border rounded-lg bg-ui-bg text-ui-fg text-sm font-medium hover:bg-ui-bg-hover shadow-sm cursor-pointer transition-colors"
+            >
+              <Share2 size={16} /> Share
+            </button>
+          )}
+          
+          <Link 
+            to="/docs" 
+            target="_blank"
+            className="flex items-center gap-2 px-3 py-1.5 border border-indigo-600 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm cursor-pointer transition-colors"
           >
-            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
+           <BookOpenCheck size={16} />
+           <span className="hidden sm:inline">Docs</span>
+          </Link>
         </div>
-        
-        <button className="flex items-center gap-2 px-3 py-1.5 border border-ui-border rounded-lg bg-ui-bg text-ui-fg text-sm font-medium hover:bg-ui-bg-hover shadow-sm cursor-pointer transition-colors">
-          <Share2 size={16} /> Share
-        </button>
-        
-        <Link 
-          to="/docs" 
-          target="_blank"
-          className="flex items-center gap-2 px-3 py-1.5 border border-indigo-600 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm cursor-pointer transition-colors"
-        >
-         <BookOpenCheck size={16} />
-         Documentations
-        </Link>
       </div>
+
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        canvas={currentCanvas}
+        onCanvasUpdate={setCurrentCanvas}
+      />
+
       <Toasts />
     </div>
   );

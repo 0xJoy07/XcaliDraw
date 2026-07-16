@@ -130,9 +130,28 @@ router.post('/refresh', async (req, res, next) => {
 
     const oldHash = hashRefreshToken(refreshToken);
     const storedToken = await RefreshToken.findOne({ tokenHash: oldHash, user: decoded.userId });
-    if (!storedToken || storedToken.revokedAt || storedToken.expiresAt <= new Date()) {
+    if (!storedToken || storedToken.expiresAt <= new Date()) {
       res.clearCookie(refreshCookieName, refreshCookieOptions);
       res.status(401).json({ message: 'Refresh token is no longer valid' });
+      return;
+    }
+
+    if (storedToken.revokedAt) {
+      const isWithinGracePeriod = (new Date() - storedToken.revokedAt) < 3000;
+      if (!isWithinGracePeriod) {
+        res.clearCookie(refreshCookieName, refreshCookieOptions);
+        res.status(401).json({ message: 'Refresh token reuse detected' });
+        return;
+      }
+
+      const user = await User.findById(decoded.userId);
+      if (!user) {
+        res.clearCookie(refreshCookieName, refreshCookieOptions);
+        res.status(401).json({ message: 'User no longer exists' });
+        return;
+      }
+
+      res.json({ accessToken: generateAccessToken(user._id), user: sanitizeUser(user) });
       return;
     }
 

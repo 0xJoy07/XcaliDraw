@@ -42,7 +42,7 @@ export const Toolbar = () => {
   };
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-ui-bg p-1.5 rounded-xl shadow-md border border-ui-border z-10 transition-colors">
+    <div className="flex w-max items-center gap-1 bg-ui-bg p-1.5 rounded-xl shadow-md border border-ui-border transition-colors">
       <ToolButton 
         icon={Lock} 
         label="Lock Canvas (View Only)" 

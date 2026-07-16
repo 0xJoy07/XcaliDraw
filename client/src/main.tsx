@@ -21,6 +21,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+            <Route path="/canvas/shared/:shareToken" element={<App />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<CanvasDashboardPage />} />
               <Route path="/canvases" element={<CanvasDashboardPage />} />

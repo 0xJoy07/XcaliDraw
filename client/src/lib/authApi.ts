@@ -40,6 +40,8 @@ const request = async <T>(path: string, options: RequestInit = {}): Promise<T> =
   return response.json() as Promise<T>;
 };
 
+let refreshPromise: Promise<AuthResponse> | null = null;
+
 export const authApi = {
   login: (email: string, password: string) => request<AuthResponse>('/api/auth/login', {
     method: 'POST',
@@ -50,7 +52,13 @@ export const authApi = {
     body: JSON.stringify({ email, password, name }),
   }),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
-  refresh: () => request<AuthResponse>('/api/auth/refresh', { method: 'POST' }),
+  refresh: () => {
+    if (refreshPromise) return refreshPromise;
+    refreshPromise = request<AuthResponse>('/api/auth/refresh', { method: 'POST' }).finally(() => {
+      refreshPromise = null;
+    });
+    return refreshPromise;
+  },
   me: (accessToken: string) => request<{ user: AuthUser }>('/api/auth/me', {
     headers: { Authorization: `Bearer ${accessToken}` },
   }),

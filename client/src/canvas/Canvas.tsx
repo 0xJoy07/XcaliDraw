@@ -99,7 +99,7 @@ const TextEditorOverlay = ({
 };
 
 // ─── Canvas Component ─────────────────────────────────────────────────────────
-export const Canvas: React.FC = () => {
+export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const laserCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -329,10 +329,10 @@ export const Canvas: React.FC = () => {
         e.preventDefault();
       }
 
-      if (useElementsStore.getState().appState.isToolLocked) {
+      if (readOnly || useElementsStore.getState().appState.isToolLocked) {
         const isModifierOnly = ['Control', 'Shift', 'Alt', 'Meta'].includes(e.key);
         if (!isModifierOnly && e.code !== 'Space') {
-          useElementsStore.getState().addToast('Canvas is locked. Unlock to edit.', 'error');
+          useElementsStore.getState().addToast(readOnly ? 'This canvas is view-only.' : 'Canvas is locked. Unlock to edit.', 'error');
         }
         return;
       }
@@ -501,6 +501,10 @@ export const Canvas: React.FC = () => {
     const handlePaste = (e: ClipboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      if (readOnly) {
+        useElementsStore.getState().addToast('This canvas is view-only.', 'error');
+        return;
+      }
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
@@ -593,9 +597,11 @@ export const Canvas: React.FC = () => {
     if (e.button === 2) return;
 
     const isMiddle = e.button === 1;
-    if (state.appState.isToolLocked && state.appState.activeTool !== 'laser') {
-      if (state.appState.activeTool !== 'hand' && !isMiddle && !isSpacePressed.current) {
+    if (readOnly || (state.appState.isToolLocked && state.appState.activeTool !== 'laser')) {
+      if (!readOnly && state.appState.activeTool !== 'hand' && !isMiddle && !isSpacePressed.current) {
         state.addToast('Canvas is locked. Unlock to edit.', 'error');
+      } else if (readOnly && state.appState.activeTool !== 'hand' && !isMiddle && !isSpacePressed.current) {
+        state.addToast('This canvas is view-only.', 'error');
       }
       isPanning.current = true;
       lastScreen.current = { x: e.clientX, y: e.clientY };

@@ -36,10 +36,17 @@ export const decodeRefreshTokenExpiration = (token) => {
 
 export const persistRefreshToken = async (userId, token) => {
   const tokenHash = hashRefreshToken(token);
-  await RefreshToken.create({
-    user: userId,
-    tokenHash,
-    expiresAt: decodeRefreshTokenExpiration(token),
-  });
+  try {
+    await RefreshToken.create({
+      user: userId,
+      tokenHash,
+      expiresAt: decodeRefreshTokenExpiration(token),
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return tokenHash;
+    }
+    throw error;
+  }
   return tokenHash;
 };
