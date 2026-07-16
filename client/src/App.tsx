@@ -179,7 +179,7 @@ function App() {
 
         {/* Centered Floating Toolbar */}
         {canvasAccessRole !== 'viewer' && (
-          <div className="pointer-events-auto flex-shrink-0 mx-auto w-full md:w-auto overflow-x-auto hide-scrollbar">
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:static md:translate-x-0 pointer-events-auto flex-shrink-0 mx-auto w-[calc(100vw-2rem)] md:w-auto overflow-x-auto hide-scrollbar z-20 pb-[env(safe-area-inset-bottom)] md:pb-0">
             <Toolbar />
           </div>
         )}

@@ -42,3 +42,12 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ui-fg-muted);
 }
+
+html, body, #root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+button, input, select, a, [role="button"] {
+  touch-action: manipulation;
+}

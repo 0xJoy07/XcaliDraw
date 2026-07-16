@@ -31,7 +31,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <main className="min-h-screen bg-canvas-bg text-ui-fg flex items-center justify-center px-4">
+    <main className="min-h-[100dvh] bg-canvas-bg text-ui-fg flex items-center justify-center px-4 py-8">
       <section className="w-full max-w-sm border border-ui-border bg-ui-bg rounded-lg shadow-sm p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-ui-fg">Log in</h1>
@@ -68,7 +68,7 @@ export const LoginPage = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-md bg-ui-fg px-3 py-2 font-medium text-ui-bg hover:opacity-90 disabled:opacity-60"
+            className="w-full min-h-[44px] rounded-md bg-ui-fg px-3 py-2 font-medium text-ui-bg hover:opacity-90 disabled:opacity-60"
           >
             {submitting ? 'Logging in...' : 'Log in'}
           </button>

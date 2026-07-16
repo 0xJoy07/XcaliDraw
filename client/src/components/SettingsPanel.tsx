@@ -223,6 +223,12 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } overflow-y-auto`}
       >
+        <div className="flex items-center justify-between p-4 md:hidden border-b border-ui-border">
+          <span className="font-semibold text-ui-fg">Menu</span>
+          <button onClick={onClose} className="p-1 rounded-md hover:bg-ui-bg-hover text-ui-fg-muted">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
         <div className="p-4 flex flex-col gap-1">
           {/* Section 1 */}
           <SectionItem icon={FolderOpen} label="Open" onClick={handleOpen} />

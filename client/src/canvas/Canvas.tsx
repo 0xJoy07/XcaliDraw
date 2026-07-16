@@ -145,6 +145,13 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   const dragHandle = useRef<{ elementId: string; handle: string } | null>(null);
   const origElems = useRef<Record<string, Element>>({});
 
+  // Multi-touch tracking
+  const activePointers = useRef<Map<number, { clientX: number, clientY: number }>>(new Map());
+  const isPinching = useRef<boolean>(false);
+  const pinchInitialDist = useRef<number>(0);
+  const pinchInitialZoom = useRef<number>(1);
+  const pinchInitialCenter = useRef<{x: number, y: number}>({ x: 0, y: 0 });
+
   // laser
   const laserLines = useRef<{ points: { x: number; y: number }[]; endTime: number | null }[]>([]);
 
@@ -592,6 +599,30 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   // ── Pointer Down ─────────────────────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const state = useElementsStore.getState();
+    activePointers.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+
+    if (activePointers.current.size === 2) {
+      // Cancel active single-touch actions
+      isDrawing.current = false;
+      isDraggingElems.current = false;
+      isMarquee.current = false;
+      dragHandle.current = null;
+      drawingElementId.current = null;
+      isPinching.current = true;
+      
+      const pts = Array.from(activePointers.current.values());
+      const dist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+      pinchInitialDist.current = dist;
+      pinchInitialZoom.current = state.appState.zoom;
+      pinchInitialCenter.current = {
+        x: (pts[0].clientX + pts[1].clientX) / 2,
+        y: (pts[0].clientY + pts[1].clientY) / 2
+      };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return; // Skip normal handling
+    }
+
+    if (isPinching.current) return; // Ignore additional touches while pinching
 
     if (state.appState.contextMenu) state.setAppState({ contextMenu: null });
     if (e.button === 2) return;
@@ -760,16 +791,55 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
 
   // ── Pointer Move ─────────────────────────────────────────────────────────────
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointers.current.has(e.pointerId)) {
+      activePointers.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+    }
+
+    const state = useElementsStore.getState();
+
+    if (isPinching.current && activePointers.current.size === 2) {
+      const pts = Array.from(activePointers.current.values());
+      const newDist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+      const newCenter = {
+        x: (pts[0].clientX + pts[1].clientX) / 2,
+        y: (pts[0].clientY + pts[1].clientY) / 2
+      };
+
+      // Handle Pan
+      const dx = newCenter.x - pinchInitialCenter.current.x;
+      const dy = newCenter.y - pinchInitialCenter.current.y;
+      
+      // Handle Zoom
+      const scale = newDist / pinchInitialDist.current;
+      let newZoom = pinchInitialZoom.current * scale;
+      newZoom = Math.max(0.1, Math.min(newZoom, 5));
+
+      // Calculate new scroll positions to zoom into the pinch center
+      // Similar to wheel zoom logic
+      const zoomCenterWorldX = (newCenter.x - state.appState.scrollX - dx) / pinchInitialZoom.current;
+      const zoomCenterWorldY = (newCenter.y - state.appState.scrollY - dy) / pinchInitialZoom.current;
+      
+      const newScrollX = newCenter.x - (zoomCenterWorldX * newZoom);
+      const newScrollY = newCenter.y - (zoomCenterWorldY * newZoom);
+
+      state.setAppState({
+        zoom: newZoom,
+        scrollX: newScrollX,
+        scrollY: newScrollY
+      });
+      return;
+    }
+
+    if (isPinching.current) return;
+
     if (isPanning.current) {
       const dx = e.clientX - lastScreen.current.x;
       const dy = e.clientY - lastScreen.current.y;
-      const state = useElementsStore.getState();
       state.setAppState({ scrollX: state.appState.scrollX + dx, scrollY: state.appState.scrollY + dy });
       lastScreen.current = { x: e.clientX, y: e.clientY };
       return;
     }
 
-    const state = useElementsStore.getState();
     const { x, y } = screenToWorld(e.clientX, e.clientY, state.appState);
 
     if (state.appState.activeTool === 'laser' && e.buttons === 1) {
@@ -862,6 +932,17 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
 
   // ── Pointer Up ───────────────────────────────────────────────────────────────
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    activePointers.current.delete(e.pointerId);
+    
+    if (activePointers.current.size === 0) {
+      isPinching.current = false;
+    }
+
+    if (isPinching.current) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      return; // Ignore individual pointer releases until all are up
+    }
+
     const state = useElementsStore.getState();
 
     if (isPanning.current) {

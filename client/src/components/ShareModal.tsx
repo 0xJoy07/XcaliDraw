@@ -121,8 +121,8 @@ export const ShareModal = ({ isOpen, onClose, canvas, onCanvasUpdate }: ShareMod
   const currentLinkValue = canvas.isPublic ? (canvas.publicRole || 'viewer') : 'private';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-ui-bg text-ui-fg rounded-xl shadow-2xl overflow-hidden border border-ui-border flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm sm:p-4">
+      <div className="w-full h-full sm:h-auto sm:max-w-lg bg-ui-bg text-ui-fg rounded-none sm:rounded-xl shadow-2xl overflow-hidden border border-ui-border flex flex-col max-h-[100dvh] sm:max-h-[90vh]">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-ui-border">

@@ -48,6 +48,7 @@ export const hitTest = (x: number, y: number): Element | null => {
 export const hitTestHandle = (x: number, y: number, selectedElements: Element[], zoom: number): { element: Element, handle: string } | null => {
   const pad = 8;
   const handleSize = 8 / zoom;
+  const touchTolerance = Math.max(22 / zoom, handleSize / 2 + 2);
   
   for (let i = selectedElements.length - 1; i >= 0; i--) {
     const e = selectedElements[i];
@@ -68,7 +69,7 @@ export const hitTestHandle = (x: number, y: number, selectedElements: Element[],
     ];
     
     for (const h of handles) {
-      if (Math.abs(x - h.x) <= handleSize / 2 + 2 && Math.abs(y - h.y) <= handleSize / 2 + 2) {
+      if (Math.abs(x - h.x) <= touchTolerance && Math.abs(y - h.y) <= touchTolerance) {
         return { element: e, handle: h.name };
       }
     }
