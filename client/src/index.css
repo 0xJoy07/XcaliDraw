@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Excalifont';
+  src: url('/Excalifont-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --ui-bg: #ffffff;
   --ui-fg: #374151; /* gray-700 */
@@ -7,6 +15,14 @@
   --canvas-bg: #f8f9fa;
   --ui-bg-hover: #f3f4f6; /* gray-100 */
   --ui-fg-muted: #9ca3af; /* gray-400 */
+
+  /* Auth Design System Tokens */
+  --paper: #FBFAF7;
+  --ink: #1E293B;
+  --grid-dot: #DEDBD0;
+  --marker-violet: #7C5CFC;
+  --marker-yellow: #FFD93D;
+  --marker-mint: #3DBFAE;
 }
 
 .dark {
@@ -25,12 +41,33 @@
   --color-canvas-bg: var(--canvas-bg);
   --color-ui-bg-hover: var(--ui-bg-hover);
   --color-ui-fg-muted: var(--ui-fg-muted);
+
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-grid-dot: var(--grid-dot);
+  --color-marker-violet: var(--marker-violet);
+  --color-marker-yellow: var(--marker-yellow);
+  --color-marker-mint: var(--marker-mint);
+  
+  --font-virgil: 'Excalifont', sans-serif;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
+}
+
+/* Autofill Override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
+  transition: background-color 5000s ease-in-out 0s;
+  -webkit-box-shadow: 0 0 0px 1000px var(--paper) inset;
+  box-shadow: 0 0 0px 1000px var(--paper) inset;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

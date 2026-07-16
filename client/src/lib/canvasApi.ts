@@ -66,7 +66,7 @@ const request = async <T>(
 export const createCanvas = (authenticatedFetch: AuthenticatedFetch, title?: string) => {
   return request<{ canvas: SavedCanvas }>(authenticatedFetch, '/api/canvases', {
     method: 'POST',
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title: title || 'Untitled sketch' }),
   });
 };
 

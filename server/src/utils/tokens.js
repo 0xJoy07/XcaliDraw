@@ -18,7 +18,7 @@ export const generateAccessToken = (userId) => {
 
 export const generateRefreshToken = (userId) => {
   return jwt.sign(
-    { userId: userId.toString() },
+    { userId: userId.toString(), jti: crypto.randomUUID() },
     requireEnv('JWT_REFRESH_SECRET'),
     { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' },
   );

@@ -129,15 +129,22 @@ router.post('/refresh', async (req, res, next) => {
     }
 
     const oldHash = hashRefreshToken(refreshToken);
-    const storedToken = await RefreshToken.findOne({ tokenHash: oldHash, user: decoded.userId });
-    if (!storedToken || storedToken.expiresAt <= new Date()) {
-      res.clearCookie(refreshCookieName, refreshCookieOptions);
-      res.status(401).json({ message: 'Refresh token is no longer valid' });
-      return;
-    }
+    let storedToken = await RefreshToken.findOneAndUpdate(
+      { tokenHash: oldHash, user: decoded.userId, revokedAt: { $exists: false } },
+      { $set: { revokedAt: new Date() } },
+      { new: true }
+    );
 
-    if (storedToken.revokedAt) {
-      const isWithinGracePeriod = (new Date() - storedToken.revokedAt) < 3000;
+    if (!storedToken) {
+      const existingRevoked = await RefreshToken.findOne({ tokenHash: oldHash, user: decoded.userId });
+      
+      if (!existingRevoked || existingRevoked.expiresAt <= new Date()) {
+        res.clearCookie(refreshCookieName, refreshCookieOptions);
+        res.status(401).json({ message: 'Refresh token is no longer valid' });
+        return;
+      }
+
+      const isWithinGracePeriod = (new Date() - existingRevoked.revokedAt) < 3000;
       if (!isWithinGracePeriod) {
         res.clearCookie(refreshCookieName, refreshCookieOptions);
         res.status(401).json({ message: 'Refresh token reuse detected' });
@@ -155,6 +162,12 @@ router.post('/refresh', async (req, res, next) => {
       return;
     }
 
+    if (storedToken.expiresAt <= new Date()) {
+      res.clearCookie(refreshCookieName, refreshCookieOptions);
+      res.status(401).json({ message: 'Refresh token is no longer valid' });
+      return;
+    }
+
     const user = await User.findById(decoded.userId);
     if (!user) {
       res.clearCookie(refreshCookieName, refreshCookieOptions);
@@ -164,7 +177,7 @@ router.post('/refresh', async (req, res, next) => {
 
     const newRefreshToken = generateRefreshToken(user._id);
     const newHash = await persistRefreshToken(user._id, newRefreshToken);
-    storedToken.revokedAt = new Date();
+    
     storedToken.replacedByTokenHash = newHash;
     await storedToken.save();
 

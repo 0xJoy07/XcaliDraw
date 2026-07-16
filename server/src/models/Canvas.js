@@ -9,7 +9,7 @@ const canvasSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    default: 'Untitled',
+    default: 'Untitled sketch',
     trim: true,
   },
   elements: {
