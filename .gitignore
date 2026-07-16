@@ -4,3 +4,5 @@ server/.env
 **/.env.*.local
 
 node_modules
+productions
+.agents
