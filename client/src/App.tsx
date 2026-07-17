@@ -8,7 +8,7 @@ import { StylePanel } from './components/StylePanel';
 import { FindDialog } from './components/FindDialog';
 import { HelpDialog } from './components/HelpDialog';
 import { Toasts } from './components/Toasts';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { BookOpenCheck, LogOut, Moon, Sun, Menu, Share2, Shield, Eye, Edit2, LayoutGrid } from 'lucide-react';
 import { Toolbar } from './components/Toolbar';
 import { useAuth } from './auth/AuthContext';
@@ -26,8 +26,9 @@ function App() {
   const [loadError, setLoadError] = useState('');
   
   const navigate = useNavigate();
+  const location = useLocation();
   const { canvasId, shareToken } = useParams();
-  const { user, accessToken, logout, authenticatedFetch } = useAuth();
+  const { user, accessToken, logout, authenticatedFetch, loading } = useAuth();
   
   const [canvasAccessRole, setCanvasAccessRole] = useState<CanvasAccessRole>('none');
   const [currentCanvas, setCurrentCanvas] = useState<SavedCanvas | null>(null);
@@ -42,6 +43,7 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
+    if (loading) return;
     if (!canvasId && !shareToken) return;
     let cancelled = false;
 
@@ -80,7 +82,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [authenticatedFetch, canvasId, shareToken, accessToken]);
+  }, [authenticatedFetch, canvasId, shareToken, accessToken, loading]);
 
   if (loadError) {
     return (
@@ -90,7 +92,7 @@ function App() {
           <p className="mt-2 text-sm text-ui-fg-muted">{loadError}</p>
           {(!user && canvasAccessRole === 'none') ? (
             <div className="mt-6 flex flex-col gap-2">
-              <Link to="/login" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">Log in</Link>
+              <Link to="/login" state={{ from: location }} className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">Log in</Link>
               <Link to="/" className="px-4 py-2 border border-ui-border rounded-md text-sm font-medium hover:bg-ui-bg-hover">Back to home</Link>
             </div>
           ) : (
@@ -209,7 +211,7 @@ function App() {
               </button>
             </div>
           ) : (
-            <Link to="/login" className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 shadow-sm">
+            <Link to="/login" state={{ from: location }} className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 shadow-sm">
               Log in
             </Link>
           )}

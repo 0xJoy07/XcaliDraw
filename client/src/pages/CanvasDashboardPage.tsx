@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FilePlus2, LogOut } from 'lucide-react';
+import { FilePlus2, LogOut, ExternalLink, Link, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { createCanvas, deleteCanvas, listUserCanvases } from '../lib/canvasApi';
@@ -8,12 +8,14 @@ import type { CanvasSummary } from '../lib/canvasApi';
 import { DotGridBackground } from '../components/ui/DotGridBackground';
 import { RoughCard } from '../components/ui/RoughCard';
 import { RoughButton } from '../components/ui/RoughButton';
-import { RoughDeleteButton } from '../components/ui/RoughDeleteButton';
+import { RoughActionMenu } from '../components/ui/RoughActionMenu';
 import { DoodleAnim } from '../components/ui/DoodleAnim';
+import { useElementsStore } from '../store/elementsStore';
 
 export const CanvasDashboardPage = () => {
   const { authenticatedFetch, logout, user } = useAuth();
   const navigate = useNavigate();
+  const addToast = useElementsStore((state) => state.addToast);
   const [canvases, setCanvases] = useState<CanvasSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,8 +44,7 @@ export const CanvasDashboardPage = () => {
     navigate(`/canvas/${response.canvas.id}`);
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = async (id: string) => {
     await deleteCanvas(authenticatedFetch, id);
     setCanvases((items) => items.filter((canvas) => canvas.id !== id));
   };
@@ -123,8 +124,31 @@ export const CanvasDashboardPage = () => {
                         </p>
                       </div>
                       <div className="mt-4 flex justify-end">
-                        <RoughDeleteButton
-                          onClick={(e) => handleDelete(canvas.id, e)}
+                        <RoughActionMenu
+                          actions={[
+                            {
+                              label: 'Open in new tab',
+                              icon: <ExternalLink size={16} />,
+                              onClick: () => {
+                                window.open(`/canvas/${canvas.id}`, '_blank', 'noopener,noreferrer');
+                              },
+                            },
+                            {
+                              label: 'Copy link',
+                              icon: <Link size={16} />,
+                              onClick: () => {
+                                const url = `${window.location.origin}/canvas/${canvas.id}`;
+                                navigator.clipboard.writeText(url);
+                                addToast('Link copied to clipboard', 'success');
+                              },
+                            },
+                            {
+                              label: 'Delete',
+                              icon: <Trash2 size={16} />,
+                              destructive: true,
+                              onClick: () => handleDelete(canvas.id),
+                            },
+                          ]}
                         />
                       </div>
                     </div>

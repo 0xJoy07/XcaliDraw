@@ -35,7 +35,8 @@ export const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/';
+  const from = (location.state as any)?.from;
+  const navigateTo = from ? from.pathname + (from.search || '') + (from.hash || '') : '/';
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -44,7 +45,7 @@ export const LoginPage = () => {
 
     try {
       await login(email, password);
-      navigate(from, { replace: true });
+      navigate(navigateTo, { replace: true });
     } catch (caught) {
       setError((caught as ApiError).message || 'Could not log in');
     } finally {
@@ -117,7 +118,7 @@ export const LoginPage = () => {
           </div>
 
           <p className="mt-6 text-center text-sm font-sans text-ink/70">
-            New here? <RoughLink className="text-ink font-medium" to="/signup">Create an account</RoughLink>
+            New here? <RoughLink className="text-ink font-medium" to="/signup" state={{ from }}>Create an account</RoughLink>
           </p>
         </RoughCard>
       </div>

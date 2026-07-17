@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { ApiError } from '../lib/authApi';
 import { DotGridBackground } from '../components/ui/DotGridBackground';
@@ -35,6 +35,9 @@ export const SignupPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const location = useLocation();
+  const from = (location.state as any)?.from;
+  const navigateTo = from ? from.pathname + (from.search || '') + (from.hash || '') : '/';
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -43,7 +46,7 @@ export const SignupPage = () => {
 
     try {
       await register(email, password, name || undefined);
-      navigate('/', { replace: true });
+      navigate(navigateTo, { replace: true });
     } catch (caught) {
       setError((caught as ApiError).message || 'Could not create account');
     } finally {
@@ -119,7 +122,7 @@ export const SignupPage = () => {
           </div>
 
           <p className="mt-6 text-center text-sm font-sans text-ink/70">
-            Already have an account? <RoughLink className="text-ink font-medium" to="/login">Log in</RoughLink>
+            Already have an account? <RoughLink className="text-ink font-medium" to="/login" state={{ from }}>Log in</RoughLink>
           </p>
         </RoughCard>
       </div>
