@@ -123,6 +123,7 @@ export const StylePanel = () => {
     { value: 'sans-serif', label: 'Sans' },
     { value: 'serif', label: 'Serif' },
     { value: 'monospace', label: 'Mono' },
+    { value: 'Excalifont', label: 'Handwritten' },
   ];
 
   const FONT_SIZES = [
@@ -224,11 +225,11 @@ export const StylePanel = () => {
         <>
           <div className="flex flex-col gap-2">
             <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Font Family</span>
-            <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
+            <div className="grid grid-cols-2 gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
               {FONT_FAMILIES.map(({ value, label }) => (
                 <button
                   key={`font-${value}`}
-                  className={`flex-1 py-1 text-xs rounded-md transition-all ${
+                  className={`py-1 text-xs rounded-md transition-all ${
                     activeStyle.fontFamily === value
                       ? 'bg-ui-bg shadow-sm text-indigo-500'
                       : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
@@ -243,20 +244,34 @@ export const StylePanel = () => {
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-[10px] font-semibold text-ui-fg-muted uppercase tracking-widest">Font Size</span>
-            <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg">
-              {FONT_SIZES.map(({ value, label }) => (
-                <button
-                  key={`size-${value}`}
-                  className={`flex-1 py-1 text-xs font-medium rounded-md transition-all ${
-                    activeStyle.fontSize === value
-                      ? 'bg-ui-bg shadow-sm text-indigo-500'
-                      : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-                  onClick={() => updateStyle('fontSize', value)}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex gap-2 items-center">
+              <div className="flex gap-1.5 bg-ui-bg-hover p-1 rounded-lg flex-1">
+                {FONT_SIZES.map(({ value, label }) => (
+                  <button
+                    key={`size-${value}`}
+                    className={`flex-1 py-1 text-xs font-medium rounded-md transition-all ${
+                      activeStyle.fontSize === value
+                        ? 'bg-ui-bg shadow-sm text-indigo-500'
+                        : 'text-ui-fg hover:bg-black/5 dark:hover:bg-white/5'
+                    }`}
+                    onClick={() => updateStyle('fontSize', value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                min="1"
+                max="200"
+                value={activeStyle.fontSize || 20}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val > 0) updateStyle('fontSize', val);
+                }}
+                className="w-12 h-[30px] text-xs text-center bg-ui-bg-hover border border-transparent rounded-lg text-ui-fg focus:bg-ui-bg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                title="Custom font size"
+              />
             </div>
           </div>
           <div className="flex flex-col gap-2">

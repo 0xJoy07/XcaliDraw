@@ -68,7 +68,10 @@ export const CanvasDashboardPage = () => {
             </div>
             <div className="w-12">
               <RoughButton
-                onClick={logout}
+                onClick={async () => {
+                  await logout();
+                  navigate('/');
+                }}
                 variant="secondary"
                 icon={<LogOut size={18} />}
                 title="Log out"

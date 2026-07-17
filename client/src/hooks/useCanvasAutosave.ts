@@ -49,6 +49,7 @@ export const useCanvasAutosave = (
   const pendingPatchRef = useRef<PendingPatch | null>(null);
   const savingRef = useRef(false);
   const statusRef = useRef<SaveStatus>('idle');
+  const flushRef = useRef<() => Promise<void>>();
 
   const setStatus = (status: SaveStatus) => {
     statusRef.current = status;
@@ -102,12 +103,14 @@ export const useCanvasAutosave = (
         }
       }
     };
+    
+    flushRef.current = flush;
 
     const scheduleSave = (patch: PendingPatch, delay: number) => {
       pendingPatchRef.current = mergePatch(pendingPatchRef.current, patch);
       clearTimer(saveTimerRef);
       saveTimerRef.current = window.setTimeout(flush, delay);
-      if (statusRef.current !== 'failed') setStatus('idle');
+      if (statusRef.current !== 'failed') setStatus('saving');
     };
 
     const unsubscribe = useElementsStore.subscribe((state, prevState) => {
@@ -137,5 +140,19 @@ export const useCanvasAutosave = (
     };
   }, [authenticatedFetch, canvasId, enabled]);
 
-  return saveStatus;
+  const flushWithTimeout = async () => {
+    if (!flushRef.current || !pendingPatchRef.current) return;
+    try {
+      // Race the flush against a 3.5s timeout
+      await Promise.race([
+        flushRef.current(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Flush timeout')), 3500))
+      ]);
+    } catch (e) {
+      console.warn('Flush before navigate timed out or failed, deferring to background retry:', e);
+      // We don't throw; we want navigation to proceed.
+    }
+  };
+
+  return { saveStatus, flush: flushWithTimeout };
 };

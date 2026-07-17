@@ -99,7 +99,7 @@ const TextEditorOverlay = ({
 };
 
 // ─── Canvas Component ─────────────────────────────────────────────────────────
-export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
+export const Canvas: React.FC<{ readOnly?: boolean; isDemo?: boolean }> = ({ readOnly, isDemo }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const laserCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -276,7 +276,7 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
             ctx.font = '25px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(
-              'Welcome to Xcalidraw. Feels like familiar. But a newer one .',
+              'Click and drag to sketch.',
               canvas.width / 2,
               canvas.height / 2
             );
@@ -308,6 +308,9 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const onWheel = (e: WheelEvent) => {
+      if (isDemo && !e.ctrlKey && !e.metaKey) {
+        return; // Allow bare wheel to scroll the page in demo mode
+      }
       e.preventDefault();
       const { appState, setAppState } = useElementsStore.getState();
       if (e.ctrlKey || e.metaKey) {
@@ -321,11 +324,12 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [isDemo]);
 
   // ── Keyboard ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isDemo && (!canvasRef.current || document.activeElement !== canvasRef.current)) return;
       if (editingTextIdRef.current) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -380,7 +384,7 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); };
-  }, []); // no editingTextId dep — use ref instead
+  }, [readOnly, isDemo]); // no editingTextId dep — use ref instead
 
   // ── Laser rAF ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1064,10 +1068,20 @@ export const Canvas: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   const appState = useElementsStore(s => s.appState);
 
   return (
-    <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+    <div 
+      ref={containerRef}
+      className="absolute inset-0 select-none overflow-hidden touch-none"
+    >
       <canvas
         ref={canvasRef}
-        onPointerDown={handlePointerDown}
+        tabIndex={isDemo ? 0 : -1}
+        className="block touch-none outline-none"
+        onPointerDown={(e) => {
+          if (isDemo && canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          handlePointerDown(e);
+        }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}

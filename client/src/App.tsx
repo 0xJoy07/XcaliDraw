@@ -8,13 +8,14 @@ import { StylePanel } from './components/StylePanel';
 import { FindDialog } from './components/FindDialog';
 import { HelpDialog } from './components/HelpDialog';
 import { Toasts } from './components/Toasts';
-import { Link, useParams } from 'react-router-dom';
-import { BookOpenCheck, LogOut, Moon, Sun, Menu, Share2, Shield, Eye, Edit2 } from 'lucide-react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { BookOpenCheck, LogOut, Moon, Sun, Menu, Share2, Shield, Eye, Edit2, LayoutGrid } from 'lucide-react';
 import { Toolbar } from './components/Toolbar';
 import { useAuth } from './auth/AuthContext';
 import { getCanvas, getSharedCanvas, type SavedCanvas, type CanvasAccessRole } from './lib/canvasApi';
 import { useCanvasAutosave } from './hooks/useCanvasAutosave';
 import { ShareModal } from './components/ShareModal';
+import { SaveStatusBadge } from './components/ui/SaveStatusBadge';
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -23,6 +24,7 @@ function App() {
   const [canvasReady, setCanvasReady] = useState(false);
   const [loadError, setLoadError] = useState('');
   
+  const navigate = useNavigate();
   const { canvasId, shareToken } = useParams();
   const { user, accessToken, logout, authenticatedFetch } = useAuth();
   
@@ -32,7 +34,7 @@ function App() {
   const targetCanvasId = canvasId || currentCanvas?.id;
   const isEditingAllowed = canvasAccessRole === 'owner' || canvasAccessRole === 'editor';
   
-  const saveStatus = useCanvasAutosave(targetCanvasId, canvasReady && isEditingAllowed, authenticatedFetch);
+  const { saveStatus, flush } = useCanvasAutosave(targetCanvasId, canvasReady && isEditingAllowed, authenticatedFetch);
 
   useEffect(() => {
     // Detect system theme
@@ -153,26 +155,39 @@ function App() {
                 e.stopPropagation();
                 setIsSidebarOpen(!isSidebarOpen);
               }}
-              className="p-2 border border-ui-border rounded-lg bg-ui-bg text-ui-fg cursor-pointer hover:bg-ui-bg-hover shadow-sm transition-colors"
+              className="flex items-center justify-center w-[44px] h-[44px] border border-ui-border rounded-lg bg-ui-bg text-ui-fg cursor-pointer hover:bg-ui-bg-hover shadow-sm transition-colors"
             >
               <Menu size={20} />
             </button>
           )}
-          <Link
-            to="/"
-            className="rounded-lg border border-ui-border bg-ui-bg px-3 py-2 text-sm font-medium shadow-sm hover:bg-ui-bg-hover"
-          >
-            {user ? 'Canvases' : 'Home'}
-          </Link>
           
-          {roleBadge()}
+          {user ? (
+            <button
+              onClick={async () => {
+                await flush();
+                navigate('/dashboard');
+              }}
+              className="flex items-center justify-center gap-2 h-[44px] rounded-lg border border-ui-border bg-ui-bg px-3 text-sm font-medium shadow-sm hover:bg-ui-bg-hover transition-colors"
+            >
+              <LayoutGrid size={16} />
+              Canvases
+            </button>
+          ) : (
+            <Link
+              to="/"
+              className="flex items-center justify-center h-[44px] rounded-lg border border-ui-border bg-ui-bg px-3 text-sm font-medium shadow-sm hover:bg-ui-bg-hover transition-colors"
+            >
+              Home
+            </Link>
+          )}
+          
+          <div className="flex items-center h-[44px]">
+            {roleBadge()}
+          </div>
 
           {isEditingAllowed && (
-            <div className="rounded-lg border border-ui-border bg-ui-bg px-3 py-2 text-sm shadow-sm hidden sm:block">
-              {saveStatus === 'saving' && 'Saving...'}
-              {saveStatus === 'saved' && 'Saved'}
-              {saveStatus === 'failed' && 'Save failed - retrying'}
-              {saveStatus === 'idle' && 'Saved'}
+            <div className="hidden sm:block">
+              <SaveStatusBadge status={saveStatus} />
             </div>
           )}
         </div>
@@ -193,7 +208,10 @@ function App() {
               ) : null}
               <span className="max-w-32 truncate">{user.name || user.email}</span>
               <button
-                onClick={logout}
+                onClick={async () => {
+                  await logout();
+                  navigate('/');
+                }}
                 className="rounded-md p-1 hover:bg-ui-bg-hover"
                 title="Log out"
               >

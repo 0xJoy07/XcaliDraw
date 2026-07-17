@@ -25,7 +25,7 @@ export const Toolbar = () => {
       <button 
         onClick={handleClick}
         title={label ? `${label} ${shortcut ? `(${shortcut})` : ''}` : undefined}
-        className={`p-2 flex items-center justify-center rounded-lg transition-colors relative ${
+        className={`dock-btn p-2 flex items-center justify-center rounded-lg transition-colors relative ${
           isActive 
             ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' 
             : 'text-ui-fg hover:bg-ui-bg-hover'
@@ -42,7 +42,7 @@ export const Toolbar = () => {
   };
 
   return (
-    <div className="flex w-max items-center gap-1 bg-ui-bg p-1.5 rounded-xl shadow-md border border-ui-border transition-colors mx-auto">
+    <div className="dock-toolbar flex w-max items-center gap-1 bg-ui-bg p-1.5 rounded-xl shadow-md border border-ui-border transition-colors mx-auto">
       <ToolButton 
         icon={Lock} 
         label="Lock Canvas (View Only)" 

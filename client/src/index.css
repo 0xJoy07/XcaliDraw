@@ -23,6 +23,14 @@
   --marker-violet: #7C5CFC;
   --marker-yellow: #FFD93D;
   --marker-mint: #3DBFAE;
+
+  /* Badge specific tokens for contrast */
+  --marker-mint-bg: #e6f7f5;
+  --marker-mint-text: #21877a;
+  --marker-yellow-bg: #fffbe6;
+  --marker-yellow-text: #997300;
+  --marker-red-bg: #fef2f2;
+  --marker-red-text: #b91c1c;
 }
 
 .dark {
@@ -32,6 +40,13 @@
   --canvas-bg: #121212;
   --ui-bg-hover: #323232;
   --ui-fg-muted: #6b7280; /* gray-500 */
+  
+  --marker-mint-bg: rgba(61, 191, 174, 0.15);
+  --marker-mint-text: #3DBFAE;
+  --marker-yellow-bg: rgba(255, 217, 61, 0.15);
+  --marker-yellow-text: #FFD93D;
+  --marker-red-bg: rgba(239, 68, 68, 0.15);
+  --marker-red-text: #f87171;
 }
 
 @theme {
@@ -48,6 +63,13 @@
   --color-marker-violet: var(--marker-violet);
   --color-marker-yellow: var(--marker-yellow);
   --color-marker-mint: var(--marker-mint);
+  
+  --color-marker-mint-bg: var(--marker-mint-bg);
+  --color-marker-mint-text: var(--marker-mint-text);
+  --color-marker-yellow-bg: var(--marker-yellow-bg);
+  --color-marker-yellow-text: var(--marker-yellow-text);
+  --color-marker-red-bg: var(--marker-red-bg);
+  --color-marker-red-text: var(--marker-red-text);
   
   --font-virgil: 'Excalifont', sans-serif;
 }
@@ -87,4 +109,57 @@ html, body, #root {
 
 button, input, select, a, [role="button"] {
   touch-action: manipulation;
+}
+
+/* Scroll Reveal Animations */
+.reveal-base {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1), transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-base {
+    transition: none !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+}
+
+/* Toolbar Dock Magnification (macOS-style) */
+.dock-btn {
+  transform-origin: bottom center;
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  /* Scale the hovered button */
+  .dock-btn:hover {
+    transform: scale(1.2);
+    z-index: 10;
+  }
+  
+  /* Scale immediate left neighbor */
+  .dock-btn:has(+ .dock-btn:hover) {
+    transform: scale(1.1);
+    z-index: 5;
+  }
+  
+  /* Scale immediate right neighbor */
+  .dock-btn:hover + .dock-btn {
+    transform: scale(1.1);
+    z-index: 5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-btn {
+    transform: none !important;
+  }
 }

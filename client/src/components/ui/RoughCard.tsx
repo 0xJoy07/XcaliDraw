@@ -8,15 +8,20 @@ export const RoughCard = ({ children, className = '' }: { children: React.ReactN
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
+    const updateDims = () => {
+      if (containerRef.current) {
         setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
         });
       }
-    });
+    };
+    const observer = new ResizeObserver(updateDims);
     observer.observe(containerRef.current);
+    
+    // Ensure accurate layout after fonts load (especially Excalifont)
+    document.fonts.ready.then(updateDims);
+    
     return () => observer.disconnect();
   }, []);
 
