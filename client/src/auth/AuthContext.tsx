@@ -11,6 +11,7 @@ interface AuthContextValue {
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   loginWithProvider: (provider: 'google' | 'github') => void;
+  exchangeToken: (token: string) => Promise<void>;
   refreshSession: () => Promise<string | null>;
   authenticatedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
@@ -63,6 +64,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = authApi.providerUrl(provider);
   }, []);
 
+  const exchangeToken = useCallback(async (token: string) => {
+    const response = await authApi.oauthExchange(token);
+    applyAuthResponse(response);
+  }, [applyAuthResponse]);
+
   const authenticatedFetch = useMemo(() => {
     return createAuthenticatedFetch(() => accessToken, refreshSession);
   }, [accessToken, refreshSession]);
@@ -75,9 +81,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     register,
     logout,
     loginWithProvider,
+    exchangeToken,
     refreshSession,
     authenticatedFetch,
-  }), [user, accessToken, loading, login, register, logout, loginWithProvider, refreshSession, authenticatedFetch]);
+  }), [user, accessToken, loading, login, register, logout, loginWithProvider, exchangeToken, refreshSession, authenticatedFetch]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

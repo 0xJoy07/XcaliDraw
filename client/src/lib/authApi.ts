@@ -62,6 +62,10 @@ export const authApi = {
   me: (accessToken: string) => request<{ user: AuthUser }>('/api/auth/me', {
     headers: { Authorization: `Bearer ${accessToken}` },
   }),
+  oauthExchange: (token: string) => request<AuthResponse>('/api/auth/oauth-exchange', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  }),
   providerUrl: (provider: 'google' | 'github') => `${API_URL}/api/auth/${provider}`,
 };
 

@@ -70,6 +70,14 @@ const issueTokens = async (res, user) => {
   return accessToken;
 };
 
+const issueOauthToken = (user) => {
+  return jwt.sign(
+    { userId: user._id.toString(), type: 'oauth' },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: '5m' }
+  );
+};
+
 router.post('/register', authLimiter, validate(registerSchema), async (req, res, next) => {
   try {
     const existing = await User.exists({ email: req.body.email });
@@ -203,6 +211,33 @@ router.get('/me', requireAuth, async (req, res, next) => {
   }
 });
 
+router.post('/oauth-exchange', async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: 'Missing token' });
+    }
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+      if (decoded.type !== 'oauth') throw new Error('Invalid token type');
+    } catch (e) {
+      return res.status(401).json({ message: 'Invalid or expired token' });
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const accessToken = await issueTokens(res, user);
+    res.json({ accessToken, user: sanitizeUser(user) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/google', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     res.status(503).json({ message: 'Google OAuth is not configured' });
@@ -216,8 +251,8 @@ router.get('/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:5173'}/login` }),
   async (req, res, next) => {
     try {
-      await issueTokens(res, req.user);
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/callback`);
+      const token = issueOauthToken(req.user);
+      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/callback?token=${token}`);
     } catch (error) {
       next(error);
     }
@@ -237,8 +272,8 @@ router.get('/github/callback',
   passport.authenticate('github', { session: false, failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:5173'}/login` }),
   async (req, res, next) => {
     try {
-      await issueTokens(res, req.user);
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/callback`);
+      const token = issueOauthToken(req.user);
+      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/callback?token=${token}`);
     } catch (error) {
       next(error);
     }
