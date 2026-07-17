@@ -2,8 +2,7 @@
 
 A hand-drawn collaborative canvas tool for capturing ideas.
 
-![Dashboard Placeholder](<img width="1918" height="928" alt="image" src="https://github.com/user-attachments/assets/ea9de107-0c01-4020-a3c3-bb21dd0f323c" />
-)
+<img width="1918" height="928" alt="image" src="https://github.com/user-attachments/assets/ea9de107-0c01-4020-a3c3-bb21dd0f323c" />
 
 ## Tech Stack
 - **Frontend**: React, Vite, Tailwind CSS, Zustand, RoughJS
