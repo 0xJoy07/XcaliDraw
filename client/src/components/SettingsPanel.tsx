@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { 
   FolderOpen, Save, Download, Search, HelpCircle, RotateCcw,
-  GitFork, ChevronDown, ChevronUp,
-  Moon, Sun, Monitor
+  GitFork, ChevronDown, ChevronUp, Share2,
+  Moon, Sun, BookOpenCheck
 } from 'lucide-react';
+import { useThemeStore } from '../store/themeStore';
 import { useElementsStore } from '../store/elementsStore';
 import { nanoid } from 'nanoid';
 import { imageCache } from '../canvas/renderElement';
@@ -11,14 +12,16 @@ import { imageCache } from '../canvas/renderElement';
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onShare?: () => void;
 }
 
 const BG_COLORS = ['#f8f9fa', '#e9ecef', '#dee2e6', '#ffe3e3', '#eebefa', '#d0ebff', '#121212', '#1e1e1e'];
 
-export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
+export const SettingsPanel = ({ isOpen, onClose, onShare }: SettingsPanelProps) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const [preferencesOpen, setPreferencesOpen] = useState(true);
   const setDirty = useElementsStore(state => state.setDirty);
+  const { theme, setTheme } = useThemeStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -170,20 +173,7 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
     onClose();
   };
 
-  const setTheme = (theme: 'light' | 'dark' | 'system') => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (theme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }
-    setDirty();
-  };
+
   useEffect(() => {
     const handleGlobalShortcuts = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -234,6 +224,7 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
           <SectionItem icon={FolderOpen} label="Open" onClick={handleOpen} />
           <SectionItem icon={Save} label="Save to..." onClick={handleSave} />
           <SectionItem icon={Download} label="Export image..." onClick={handleExportImage} />
+          {onShare && <SectionItem icon={Share2} label="Share..." onClick={() => { onShare(); onClose(); }} />}
           <div className="h-px w-full bg-ui-border my-2"></div>
           <SectionItem icon={Search} label="Find" onClick={() => {
             useElementsStore.getState().setAppState({ isFindOpen: true });
@@ -251,6 +242,7 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
 
         <div className="p-4 flex flex-col gap-1">
           {/* Section 2 */}
+          <SectionItem icon={BookOpenCheck} label="Documentation" onClick={() => window.open('/docs', '_blank')} />
           <SectionItem icon={GitFork} label="GitHub" onClick={() => window.open('https://github.com/0xJoy07/Xcalidraw', '_blank')} />
         </div>
 
@@ -272,14 +264,11 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-ui-fg-muted uppercase tracking-wider">Theme</span>
                 <div className="flex bg-ui-bg-hover p-1 rounded-lg border border-ui-border">
-                  <button onClick={() => setTheme('dark')} className="flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg">
+                  <button onClick={() => setTheme('dark')} className={`flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg ${theme === 'dark' ? 'bg-black/10 dark:bg-white/10' : ''}`}>
                     <Moon size={16} />
                   </button>
-                  <button onClick={() => setTheme('light')} className="flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg">
+                  <button onClick={() => setTheme('light')} className={`flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg ${theme === 'light' ? 'bg-black/10 dark:bg-white/10' : ''}`}>
                     <Sun size={16} />
-                  </button>
-                  <button onClick={() => setTheme('system')} className="flex-1 flex justify-center py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-ui-fg">
-                    <Monitor size={16} />
                   </button>
                 </div>
               </div>

@@ -18,7 +18,7 @@ export const ZoomIndicator = () => {
   };
 
   return (
-    <div className="absolute bottom-4 left-4 flex items-center gap-2 z-10">
+    <div className="hidden md:flex absolute bottom-4 left-4 items-center gap-2 z-10">
       <div className="flex items-center bg-ui-bg border border-ui-border rounded-lg shadow-sm transition-colors">
         <button 
           onClick={() => useElementsStore.getState().undo()}

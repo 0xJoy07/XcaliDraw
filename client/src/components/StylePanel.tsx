@@ -140,7 +140,7 @@ export const StylePanel = () => {
   ];
 
   return (
-    <div className="absolute left-4 top-20 bg-ui-bg border border-ui-border rounded-xl shadow-lg p-4 w-60 z-10 text-sm flex flex-col gap-4 select-none">
+    <div className="absolute md:left-4 md:top-20 md:bottom-auto md:translate-x-0 bottom-24 left-1/2 -translate-x-1/2 bg-ui-bg border border-ui-border rounded-xl shadow-lg p-4 w-[calc(100%-2rem)] md:w-60 z-10 text-sm flex flex-col gap-4 select-none max-h-[50vh] overflow-y-auto">
 
       {/* Stroke Color */}
       <div className="flex flex-col gap-2">

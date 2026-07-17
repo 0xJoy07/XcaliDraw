@@ -16,9 +16,10 @@ import { getCanvas, getSharedCanvas, type SavedCanvas, type CanvasAccessRole } f
 import { useCanvasAutosave } from './hooks/useCanvasAutosave';
 import { ShareModal } from './components/ShareModal';
 import { SaveStatusBadge } from './components/ui/SaveStatusBadge';
+import { useThemeStore } from './store/themeStore';
 
 function App() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { theme, toggleTheme } = useThemeStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [canvasReady, setCanvasReady] = useState(false);
@@ -37,21 +38,6 @@ function App() {
   const { saveStatus, flush } = useCanvasAutosave(targetCanvasId, canvasReady && isEditingAllowed, authenticatedFetch);
 
   useEffect(() => {
-    // Detect system theme
-    const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setTheme(darkQuery.matches ? 'dark' : 'light');
-    
-    const listener = (e: MediaQueryListEvent) => setTheme(e.matches ? 'dark' : 'light');
-    darkQuery.addEventListener('change', listener);
-    return () => darkQuery.removeEventListener('change', listener);
-  }, []);
-
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
     useElementsStore.getState().setDirty(); // Force canvas to redraw with new background
   }, [theme]);
 
@@ -136,7 +122,11 @@ function App() {
     <div className="relative w-screen h-screen overflow-hidden text-ui-fg">
       <Canvas readOnly={canvasAccessRole === 'viewer'} />
       {canvasAccessRole !== 'viewer' && (
-        <SettingsPanel isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <SettingsPanel 
+          isOpen={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
+          onShare={canvasAccessRole === 'owner' ? () => setIsShareModalOpen(true) : undefined}
+        />
       )}
       <ZoomIndicator />
       {canvasAccessRole !== 'viewer' && <ContextMenu />}
@@ -200,7 +190,7 @@ function App() {
         )}
         
         {/* Top Right Actions */}
-        <div className="flex items-center justify-end gap-2 sm:gap-3 pointer-events-auto w-full md:w-auto">
+        <div className="flex items-center justify-end gap-2 sm:gap-3 pointer-events-auto">
           {user ? (
             <div className="hidden lg:flex items-center gap-2 rounded-lg border border-ui-border bg-ui-bg px-3 py-1.5 text-sm shadow-sm">
               {user.avatarUrl ? (
@@ -224,9 +214,9 @@ function App() {
             </Link>
           )}
 
-          <div className="flex bg-ui-bg rounded-lg shadow-sm border border-ui-border p-1 transition-colors">
+          <div className="hidden sm:flex bg-ui-bg rounded-lg shadow-sm border border-ui-border p-1 transition-colors">
             <button 
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              onClick={toggleTheme}
               className="p-1.5 rounded-md text-ui-fg hover:bg-ui-bg-hover transition-colors"
               title="Toggle theme"
             >
@@ -246,7 +236,7 @@ function App() {
           <Link 
             to="/docs" 
             target="_blank"
-            className="flex items-center gap-2 px-3 py-1.5 border border-indigo-600 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm cursor-pointer transition-colors"
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 border border-indigo-600 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm cursor-pointer transition-colors"
           >
            <BookOpenCheck size={16} />
            <span className="hidden sm:inline">Docs</span>
