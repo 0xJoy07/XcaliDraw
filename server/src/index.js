@@ -14,7 +14,7 @@ const port = process.env.PORT;
 const clientUrl = process.env.CLIENT_URL;
 
 app.use(cors({
-  origin: [clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: [clientUrl],
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
