@@ -259,6 +259,7 @@ function App() {
         onClose={() => setIsShareModalOpen(false)} 
         canvas={currentCanvas}
         onCanvasUpdate={setCurrentCanvas}
+        theme={theme}
       />
 
       <Toasts />

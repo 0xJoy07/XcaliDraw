@@ -86,10 +86,10 @@ export const RoughButton = ({ variant = 'primary', icon, children, ...props }: R
           strokeWidth="2"
           fill="none"
           strokeLinecap="round"
-          strokeDasharray="100"
-          strokeDashoffset={isHovered ? "0" : "100"}
+          strokeDasharray="500"
+          strokeDashoffset={isHovered ? "0" : "500"}
           style={{
-            transition: 'stroke-dashoffset 0.2s ease-out',
+            transition: 'stroke-dashoffset 0.25s ease-out',
           }}
         />
       </svg>

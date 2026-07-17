@@ -49,7 +49,7 @@ export const useCanvasAutosave = (
   const pendingPatchRef = useRef<PendingPatch | null>(null);
   const savingRef = useRef(false);
   const statusRef = useRef<SaveStatus>('idle');
-  const flushRef = useRef<() => Promise<void>>();
+  const flushRef = useRef<(() => Promise<void>) | null>(null);
 
   const setStatus = (status: SaveStatus) => {
     statusRef.current = status;

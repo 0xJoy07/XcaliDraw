@@ -31,6 +31,13 @@
   --marker-yellow-text: #997300;
   --marker-red-bg: #fef2f2;
   --marker-red-text: #b91c1c;
+
+  /* Dark theme modal tokens */
+  --panel-dark: #232329;
+  --ink-dark: #d1d5db;
+  --marker-violet-dark: #A78BFA;
+  --marker-yellow-dark: #FFD93D;
+  --marker-mint-dark: #3DBFAE;
 }
 
 .dark {
@@ -47,6 +54,35 @@
   --marker-yellow-text: #FFD93D;
   --marker-red-bg: rgba(239, 68, 68, 0.15);
   --marker-red-text: #f87171;
+}
+
+.theme-adaptive {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-marker-violet: var(--marker-violet);
+  --color-marker-yellow: var(--marker-yellow);
+  --color-marker-mint: var(--marker-mint);
+  
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+.dark .theme-adaptive {
+  --paper: var(--panel-dark);
+  --ink: var(--ink-dark);
+  --marker-violet: var(--marker-violet-dark);
+  --marker-yellow: var(--marker-yellow-dark);
+  --marker-mint: var(--marker-mint-dark);
+
+  /* Force Tailwind color utilities to use local values */
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-marker-violet: var(--marker-violet);
+  --color-marker-yellow: var(--marker-yellow);
+  --color-marker-mint: var(--marker-mint);
+  
+  background-color: var(--paper);
+  color: var(--ink);
 }
 
 @theme {
