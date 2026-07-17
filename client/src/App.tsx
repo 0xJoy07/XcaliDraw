@@ -125,9 +125,9 @@ function App() {
 
   const roleBadge = () => {
     switch (canvasAccessRole) {
-      case 'owner': return <span className="flex items-center gap-1 text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 px-2 py-1 rounded-md"><Shield size={12}/> Owner</span>;
-      case 'editor': return <span className="flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 px-2 py-1 rounded-md"><Edit2 size={12}/> Editing</span>;
-      case 'viewer': return <span className="flex items-center gap-1 text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 px-2 py-1 rounded-md"><Eye size={12}/> Viewing Only</span>;
+      case 'owner': return <span className="flex items-center justify-center gap-1.5 h-[44px] text-sm font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 px-3 rounded-lg shadow-sm"><Shield size={16}/> Owner</span>;
+      case 'editor': return <span className="flex items-center justify-center gap-1.5 h-[44px] text-sm font-semibold bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 px-3 rounded-lg shadow-sm"><Edit2 size={16}/> Editing</span>;
+      case 'viewer': return <span className="flex items-center justify-center gap-1.5 h-[44px] text-sm font-semibold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 px-3 rounded-lg shadow-sm"><Eye size={16}/> Viewing Only</span>;
       default: return null;
     }
   };
@@ -164,13 +164,13 @@ function App() {
           {user ? (
             <button
               onClick={async () => {
-                await flush();
                 navigate('/dashboard');
+                await flush();
               }}
               className="flex items-center justify-center gap-2 h-[44px] rounded-lg border border-ui-border bg-ui-bg px-3 text-sm font-medium shadow-sm hover:bg-ui-bg-hover transition-colors"
             >
               <LayoutGrid size={16} />
-              Canvases
+              Dashboard
             </button>
           ) : (
             <Link
@@ -209,8 +209,8 @@ function App() {
               <span className="max-w-32 truncate">{user.name || user.email}</span>
               <button
                 onClick={async () => {
-                  await logout();
                   navigate('/');
+                  await logout();
                 }}
                 className="rounded-md p-1 hover:bg-ui-bg-hover"
                 title="Log out"
