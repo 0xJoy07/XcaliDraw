@@ -16,7 +16,7 @@ export interface ApiError extends Error {
   details?: unknown;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL as string;
 
 const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
   const response = await fetch(`${API_URL}${path}`, {

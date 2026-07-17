@@ -1,7 +1,7 @@
 import type { AppState } from '../store/elementsStore';
 import type { Element } from '../types/element';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL as string;
 
 export type CanvasAccessRole = 'owner' | 'editor' | 'viewer' | 'none';
 

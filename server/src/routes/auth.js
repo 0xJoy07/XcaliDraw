@@ -248,11 +248,11 @@ router.get('/google', (req, res, next) => {
 });
 
 router.get('/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:5173'}/login` }),
+  passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL}/login` }),
   async (req, res, next) => {
     try {
       const token = issueOauthToken(req.user);
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/callback?token=${token}`);
+      res.redirect(`${process.env.CLIENT_URL}/oauth/callback?token=${token}`);
     } catch (error) {
       next(error);
     }
@@ -269,11 +269,11 @@ router.get('/github', (req, res, next) => {
 });
 
 router.get('/github/callback',
-  passport.authenticate('github', { session: false, failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:5173'}/login` }),
+  passport.authenticate('github', { session: false, failureRedirect: `${process.env.CLIENT_URL}/login` }),
   async (req, res, next) => {
     try {
       const token = issueOauthToken(req.user);
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/callback?token=${token}`);
+      res.redirect(`${process.env.CLIENT_URL}/oauth/callback?token=${token}`);
     } catch (error) {
       next(error);
     }
