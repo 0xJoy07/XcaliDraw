@@ -9,7 +9,8 @@ import authRoutes from './routes/auth.js';
 import canvasRoutes from './routes/canvases.js';
 
 const app = express();
-const port = process.env.PORT || 5000;
+app.set('trust proxy', 1);
+const port = process.env.PORT;
 const clientUrl = process.env.CLIENT_URL;
 
 app.use(cors({
