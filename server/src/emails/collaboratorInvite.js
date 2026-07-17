@@ -1,13 +1,7 @@
 import { baseTemplate } from './baseTemplate.js';
 
-interface CollaboratorInviteProps {
-  ownerName: string;
-  canvasTitle: string;
-  role: 'viewer' | 'editor';
-  canvasLink: string;
-}
 
-export const collaboratorInviteEmail = ({ ownerName, canvasTitle, role, canvasLink }: CollaboratorInviteProps): string => {
+export const collaboratorInviteEmail = ({ ownerName, canvasTitle, role, canvasLink }) => {
   return baseTemplate({
     previewText: `${ownerName} shared a canvas with you on Xcalidraw`,
     bodyHtml: `

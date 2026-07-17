@@ -1,11 +1,8 @@
-interface BaseTemplateProps {
-  previewText: string;
-  bodyHtml: string;
-}
+
 
 import { requireEnv } from '../utils/env.js';
 
-export const baseTemplate = ({ previewText, bodyHtml }: BaseTemplateProps): string => {
+export const baseTemplate = ({ previewText, bodyHtml }) => {
   const clientUrl = requireEnv('CLIENT_URL');
   return `
 <!DOCTYPE html>

@@ -8,8 +8,8 @@ import { CanvasCollaborator } from '../models/CanvasCollaborator.js';
 import { User } from '../models/User.js';
 import { resolveAccess } from '../utils/resolveAccess.js';
 import rateLimit from 'express-rate-limit';
-import { sendMail } from '../lib/mailer.ts';
-import { collaboratorInviteEmail } from '../emails/collaboratorInvite.ts';
+import { sendMail } from '../lib/mailer.js';
+import { collaboratorInviteEmail } from '../emails/collaboratorInvite.js';
 
 const router = express.Router();
 

@@ -15,8 +15,8 @@ import {
 import crypto from 'crypto';
 import { PasswordResetToken } from '../models/PasswordResetToken.js';
 import { BlacklistedToken } from '../models/BlacklistedToken.js';
-import { sendMail } from '../lib/mailer.ts';
-import { passwordResetEmail } from '../emails/passwordReset.ts';
+import { sendMail } from '../lib/mailer.js';
+import { passwordResetEmail } from '../emails/passwordReset.js';
 import { requireEnv } from '../utils/env.js';
 
 const router = express.Router();

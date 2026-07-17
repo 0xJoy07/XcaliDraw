@@ -1,6 +1,6 @@
 import { baseTemplate } from './baseTemplate.js';
 
-export const passwordResetEmail = (resetLink: string): string => {
+export const passwordResetEmail = (resetLink) => {
   return baseTemplate({
     previewText: 'Reset your Xcalidraw password',
     bodyHtml: `

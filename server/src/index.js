@@ -7,7 +7,7 @@ import { connectDb } from './config/db.js';
 import './config/passport.js';
 import authRoutes from './routes/auth.js';
 import canvasRoutes from './routes/canvases.js';
-import { verifyMailer } from './lib/mailer.ts';
+import { verifyMailer } from './lib/mailer.js';
 
 const app = express();
 app.set('trust proxy', 1);

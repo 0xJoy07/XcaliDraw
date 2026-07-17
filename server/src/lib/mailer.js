@@ -36,14 +36,9 @@ export const verifyMailer = async () => {
   }
 };
 
-interface SendMailOptions {
-  to: string;
-  subject: string;
-  html: string;
-  text: string;
-}
 
-export const sendMail = async ({ to, subject, html, text }: SendMailOptions) => {
+
+export const sendMail = async ({ to, subject, html, text }) => {
   try {
     const info = await transporter.sendMail({
       from: `"${fromName}" <${user}>`,
