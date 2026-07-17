@@ -74,16 +74,23 @@ export const LoginPage = () => {
               />
             </label>
 
-            <label className="block">
-              <span className="text-sm font-sans font-medium text-ink">Password</span>
-              <RoughInput
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                required
-                autoComplete="current-password"
-              />
-            </label>
+            <div className="space-y-1">
+              <label className="block">
+                <span className="text-sm font-sans font-medium text-ink">Password</span>
+                <RoughInput
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                />
+              </label>
+              <div className="flex justify-end">
+                <RoughLink className="text-sm font-sans font-medium text-ink/70 hover:text-ink" to="/forgot-password">
+                  Forgot password?
+                </RoughLink>
+              </div>
+            </div>
 
             {error && <p className="text-sm font-sans text-red-500">{error}</p>}
 

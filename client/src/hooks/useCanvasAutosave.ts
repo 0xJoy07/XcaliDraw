@@ -143,14 +143,14 @@ export const useCanvasAutosave = (
   const flushWithTimeout = async () => {
     if (!flushRef.current || !pendingPatchRef.current) return;
     try {
-      // Race the flush against a 3.5s timeout
+      // don't let a hanging save block navigation
       await Promise.race([
         flushRef.current(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Flush timeout')), 3500))
       ]);
     } catch (e) {
       console.warn('Flush before navigate timed out or failed, deferring to background retry:', e);
-      // We don't throw; we want navigation to proceed.
+      // let navigation proceed even if flush times out
     }
   };
 

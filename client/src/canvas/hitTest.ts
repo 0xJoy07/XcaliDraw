@@ -1,7 +1,7 @@
 import RBush from 'rbush';
 import type { Element } from '../types/element';
 
-export interface BBox {
+interface BBox {
   minX: number;
   minY: number;
   maxX: number;
@@ -9,7 +9,7 @@ export interface BBox {
   element: Element;
 }
 
-export const rbushTree = new RBush<BBox>();
+const rbushTree = new RBush<BBox>();
 
 export const updateRbush = (elements: Element[]) => {
   rbushTree.clear();

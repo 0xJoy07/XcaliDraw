@@ -12,13 +12,20 @@ import {
   hashRefreshToken,
   persistRefreshToken,
 } from '../utils/tokens.js';
+import crypto from 'crypto';
+import { PasswordResetToken } from '../models/PasswordResetToken.js';
+import { BlacklistedToken } from '../models/BlacklistedToken.js';
+import { sendMail } from '../lib/mailer.ts';
+import { passwordResetEmail } from '../emails/passwordReset.ts';
+import { requireEnv } from '../utils/env.js';
 
 const router = express.Router();
-const refreshCookieName = process.env.REFRESH_COOKIE_NAME || 'refreshToken';
+const refreshCookieName = requireEnv('REFRESH_COOKIE_NAME');
 
 const refreshCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
+  // strict would drop the cookie on the first API call after an OAuth redirect from an external site
   sameSite: 'lax',
   path: '/api/auth/refresh',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -32,15 +39,34 @@ const authLimiter = rateLimit({
   message: { message: 'Too many attempts. Please try again later.' },
 });
 
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many attempts. Please try again later.' },
+});
+
+const passwordSchema = z.string().min(8).max(128);
+
 const registerSchema = z.object({
   email: z.string().email().trim().toLowerCase(),
-  password: z.string().min(8).max(128),
+  password: passwordSchema,
   name: z.string().trim().min(1).max(100).optional(),
 });
 
 const loginSchema = z.object({
   email: z.string().email().trim().toLowerCase(),
   password: z.string().min(1).max(128),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email().trim().toLowerCase(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: passwordSchema,
 });
 
 const sanitizeUser = (user) => ({
@@ -115,9 +141,24 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res, next)
   }
 });
 
-router.post('/logout', async (_req, res) => {
-  res.clearCookie(refreshCookieName, refreshCookieOptions);
-  res.status(204).send();
+router.post('/logout', async (req, res, next) => {
+  try {
+    const header = req.get('authorization');
+    const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
+    
+    if (token) {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      await BlacklistedToken.create({ tokenHash }).catch((err) => {
+        // ignore dupe key if token was already blacklisted
+        if (err.code !== 11000) throw err;
+      });
+    }
+
+    res.clearCookie(refreshCookieName, refreshCookieOptions);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.post('/refresh', async (req, res, next) => {
@@ -153,6 +194,7 @@ router.post('/refresh', async (req, res, next) => {
         return;
       }
 
+      // StrictMode double-fires this on mount, don't want that treated as a replay attack
       const isWithinGracePeriod = (new Date() - existingRevoked.revokedAt) < 3000;
       if (!isWithinGracePeriod) {
         res.clearCookie(refreshCookieName, refreshCookieOptions);
@@ -279,5 +321,86 @@ router.get('/github/callback',
     }
   },
 );
+router.post('/forgot-password', forgotPasswordLimiter, validate(forgotPasswordSchema), async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    
+    // don't leak user existence
+    const successMessage = "If an account exists for that email, we've sent a reset link.";
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(200).json({ message: successMessage });
+    }
+
+    // clear existing reset tokens for this user
+    await PasswordResetToken.updateMany(
+      { user: user._id, used: false },
+      { $set: { used: true } }
+    );
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    await PasswordResetToken.create({
+      user: user._id,
+      tokenHash,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 mins
+    });
+
+    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${rawToken}`;
+    
+    // await but catch so email failure doesn't break the response
+    try {
+      await sendMail({
+        to: user.email,
+        subject: 'Reset your password',
+        html: passwordResetEmail(resetLink),
+        text: `We received a request to reset your password. This link expires in 15 minutes. Or copy and paste this URL into your browser: ${resetLink}`
+      });
+    } catch (emailError) {
+      console.error('Failed to dispatch password reset email:', emailError);
+      // swallow email errors, user gets generic success either way
+    }
+
+    res.status(200).json({ message: successMessage });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/reset-password', validate(resetPasswordSchema), async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const resetToken = await PasswordResetToken.findOne({
+      tokenHash,
+      used: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!resetToken) {
+      return res.status(400).json({ message: 'This link is invalid or has expired. Request a new one.' });
+    }
+
+    const user = await User.findById(resetToken.user);
+    if (!user) {
+      return res.status(400).json({ message: 'This link is invalid or has expired. Request a new one.' });
+    }
+
+    user.password = newPassword; // Mongoose middleware handles bcrypt hashing
+    await user.save();
+
+    resetToken.used = true;
+    await resetToken.save();
+
+    await RefreshToken.deleteMany({ user: user._id });
+
+    res.status(200).json({ message: 'Password has been successfully reset.' });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useId } from 'react';
 import rough from 'roughjs';
 import { ChevronDown } from 'lucide-react';
 
-export interface Option {
+interface Option {
   value: string;
   label: string;
 }

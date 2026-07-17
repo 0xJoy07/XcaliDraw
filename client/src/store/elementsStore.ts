@@ -3,7 +3,7 @@ import type { Element } from '../types/element';
 import { updateRbush } from '../canvas/hitTest';
 import { nanoid } from 'nanoid';
 
-export type ToolType = 'select' | 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'line' | 'freedraw' | 'text' | 'image' | 'eraser' | 'hand' | 'laser';
+type ToolType = 'select' | 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'line' | 'freedraw' | 'text' | 'image' | 'eraser' | 'hand' | 'laser';
 
 export interface AppState {
   scrollX: number;
@@ -26,7 +26,7 @@ export interface AppState {
   isToolLocked?: boolean;
 }
 
-export interface ToastData {
+interface ToastData {
   id: string;
   message: string;
   type?: 'info' | 'error' | 'success';

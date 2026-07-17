@@ -31,11 +31,11 @@ export const LandingPage = () => {
     }
   }, [user, loading, navigate]);
 
-  // Isolate store on mount and unmount
+  // demo canvas needs a blank state, but without a true scoped store yet we just wipe the global one on mount/unmount
   useEffect(() => {
     useElementsStore.getState().hydrateCanvas([], null);
     
-    // Set default tool to freedraw for the demo
+    // default to freedraw so visitors can immediately doodle
     useElementsStore.getState().setAppState({ activeTool: 'freedraw' });
 
     return () => {

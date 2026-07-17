@@ -2,7 +2,8 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://xcali-draw-server.vercel.app/api/:path*"
+      "destination": "${VITE_API_URL}/api/:path*",
+      "env": ["VITE_API_URL"]
     },
     {
       "source": "/(.*)",

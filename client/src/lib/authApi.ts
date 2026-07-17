@@ -40,6 +40,7 @@ const request = async <T>(path: string, options: RequestInit = {}): Promise<T> =
   return response.json() as Promise<T>;
 };
 
+// single-flight guard: prevent concurrent requests from invalidating each other's refresh tokens
 let refreshPromise: Promise<AuthResponse> | null = null;
 
 export const authApi = {
@@ -51,6 +52,16 @@ export const authApi = {
     method: 'POST',
     body: JSON.stringify({ email, password, name }),
   }),
+  forgotPassword: (email: string) =>
+    request<{ message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (data: { token: string; newPassword: string }) =>
+    request<{ message: string }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
   refresh: () => {
     if (refreshPromise) return refreshPromise;

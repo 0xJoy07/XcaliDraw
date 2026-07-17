@@ -42,8 +42,8 @@ cd Xcalidraw
 
 # Install and start the auth server
 cd server
-npm install
-npm run dev
+bun install
+bun run dev
 
 # In a second terminal, install and start the client
 cd ../client
@@ -117,6 +117,11 @@ Xcalidraw is currently a **single-user, non-collaborative** application.
 - **AI Integration:** Integrating generative UI and spatial canvas reasoning using open models.
 
 *No ETA is provided for these features.*
+
+## ⚠️ Known Limitations
+- **No Automated Test Suite:** The project currently relies on manual testing. There is no automated test suite.
+- **Demo Canvas Isolation:** The Landing Page demo canvas currently uses the shared global `elementsStore` and simply wipes it on mount/unmount. True isolation via a scoped store context is not yet implemented.
+- **Missing Demo GIFs:** The documentation (`FEATURES.md` and `README.md`) contains placeholders where demo GIFs of the canvas tools need to be recorded and embedded.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./assets/divider-dark.svg">

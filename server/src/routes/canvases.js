@@ -7,6 +7,9 @@ import { Canvas } from '../models/Canvas.js';
 import { CanvasCollaborator } from '../models/CanvasCollaborator.js';
 import { User } from '../models/User.js';
 import { resolveAccess } from '../utils/resolveAccess.js';
+import rateLimit from 'express-rate-limit';
+import { sendMail } from '../lib/mailer.ts';
+import { collaboratorInviteEmail } from '../emails/collaboratorInvite.ts';
 
 const router = express.Router();
 
@@ -43,6 +46,15 @@ const validateBody = (schema) => (req, res, next) => {
   req.body = parsed.data;
   next();
 };
+
+const inviteLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many invites sent. Please try again later.' },
+  keyGenerator: (req) => req.user?.userId || req.ip,
+});
 
 const validateCanvasId = (req, res, next) => {
   const { id } = req.params;
@@ -242,7 +254,7 @@ router.post('/:id/revoke', validateCanvasId, async (req, res, next) => {
   }
 });
 
-router.post('/:id/collaborators', validateCanvasId, validateBody(collaboratorSchema), async (req, res, next) => {
+router.post('/:id/collaborators', validateCanvasId, inviteLimiter, validateBody(collaboratorSchema), async (req, res, next) => {
   try {
     const canvas = await findCanvasForAccess(req, res);
     if (!canvas) return;
@@ -267,13 +279,38 @@ router.post('/:id/collaborators', validateCanvasId, validateBody(collaboratorSch
       { upsert: true, new: true }
     ).populate('userId', 'email name avatarUrl');
 
-    res.json({ collaborator: {
-      id: collabo.userId._id.toString(),
-      email: collabo.userId.email,
-      name: collabo.userId.name,
-      avatarUrl: collabo.userId.avatarUrl,
-      role: collabo.role
-    }});
+    let emailSent = false;
+    try {
+      const owner = await User.findById(req.user.userId).select('name email');
+      const ownerName = owner?.name || owner?.email || 'Someone';
+      const canvasLink = `${process.env.CLIENT_URL}/canvas/${canvas._id}`;
+
+      await sendMail({
+        to: invitedUser.email,
+        subject: 'You have been invited to a canvas on Xcalidraw',
+        html: collaboratorInviteEmail({
+          ownerName,
+          canvasTitle: canvas.title || 'Untitled',
+          role: req.body.role,
+          canvasLink
+        }),
+        text: `${ownerName} gave you ${req.body.role} access to '${canvas.title || 'Untitled'}'. Open it here: ${canvasLink}`
+      });
+      emailSent = true;
+    } catch (emailError) {
+      console.error('Failed to dispatch collaborator invite email:', emailError);
+    }
+
+    res.json({
+      collaborator: {
+        id: collabo.userId._id.toString(),
+        email: collabo.userId.email,
+        name: collabo.userId.name,
+        avatarUrl: collabo.userId.avatarUrl,
+        role: collabo.role
+      },
+      emailSent
+    });
   } catch (error) {
     next(error);
   }

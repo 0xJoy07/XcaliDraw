@@ -7,6 +7,7 @@ import { connectDb } from './config/db.js';
 import './config/passport.js';
 import authRoutes from './routes/auth.js';
 import canvasRoutes from './routes/canvases.js';
+import { verifyMailer } from './lib/mailer.ts';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -33,15 +34,18 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
-connectDb()
-  .then(() => {
+(async () => {
+  try {
+    await connectDb();
+    await verifyMailer();
     app.listen(port, () => {
       console.log(`Auth server listening on port ${port}`);
     });
-  })
-  .catch(() => {
+  } catch (err) {
+    console.error('Startup error:', err);
     process.exit(1);
-  });
+  }
+})();
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);

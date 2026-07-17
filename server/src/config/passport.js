@@ -1,6 +1,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as GitHubStrategy } from 'passport-github2';
+import { requireEnv } from '../utils/env.js';
 import { User } from '../models/User.js';
 
 const upsertOAuthUser = async ({ provider, providerId, email, name, avatarUrl }) => {
@@ -35,7 +36,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
+    callbackURL: requireEnv('GOOGLE_CALLBACK_URL'),
   }, async (_accessToken, _refreshToken, profile, done) => {
     try {
       const email = profile.emails?.[0]?.value;
@@ -57,7 +58,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   passport.use(new GitHubStrategy({
     clientID: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: process.env.GITHUB_CALLBACK_URL || '/api/auth/github/callback',
+    callbackURL: requireEnv('GITHUB_CALLBACK_URL'),
     scope: ['user:email'],
   }, async (_accessToken, _refreshToken, profile, done) => {
     try {

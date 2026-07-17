@@ -55,10 +55,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [applyAuthResponse]);
 
   const logout = useCallback(async () => {
-    await authApi.logout().catch(() => undefined);
+    // We use a manual fetch here with the current access token directly
+    // to ensure it gets sent to the server for blacklisting, 
+    // even if we are bypassing authenticatedFetch's automatic refresh logic.
+    if (accessToken) {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => undefined);
+    } else {
+      await authApi.logout().catch(() => undefined);
+    }
     setAccessToken(null);
     setUser(null);
-  }, []);
+  }, [accessToken]);
 
   const loginWithProvider = useCallback((provider: 'google' | 'github') => {
     window.location.href = authApi.providerUrl(provider);
